@@ -5,7 +5,8 @@ import {
 } from 'discord-interactions';
 import 'dotenv/config';
 import express, { Request, Response } from 'express';
-import { TEST_COMMAND } from './commands';
+import { CREATE_LOTTERY } from './commands';
+import { createLottery } from './db';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -24,11 +25,13 @@ app.post('/interactions', verifyKeyMiddleware(publicKey), async (req: Request, r
   if (type === InteractionType.APPLICATION_COMMAND) {
     const { name } = data;
 
-    if (name === TEST_COMMAND.name) {
+    if (name === CREATE_LOTTERY.name) {
+      createLottery();
+
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-          content: `hello response`,
+          content: `lottery created`,
         },
       });
     }
