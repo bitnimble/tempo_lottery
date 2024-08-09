@@ -6,9 +6,12 @@
   "author": "Declan Vong <declan@canva.com>",
   "license": "MIT",
   "dependencies": {
+    "discord-interactions": "^4.0.0",
+    "dotenv": "^16.4.5",
     "express": "^4.19.2"
   },
   "devDependencies": {
+    "@types/dotenv": "^8.2.0",
     "@types/express": "^4.17.21"
   }
 }
