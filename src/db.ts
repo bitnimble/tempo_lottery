@@ -3,10 +3,10 @@
 // to deal with concurrency.
 import fs from 'fs';
 import z from 'zod';
-import { Lottery, LotteryType } from './schema';
+import { LotterySchema } from './schema';
 
 const Db = z.object({
-  lotteries: z.array(Lottery),
+  lotteries: z.array(LotterySchema),
 });
 
 let db = loadDbFromDisk();
@@ -15,21 +15,8 @@ export function getLotteries() {
   return db.lotteries;
 }
 
-export function createLottery() {
-  db.lotteries.push({
-    title: 'title',
-    type: LotteryType.SIMPLE,
-    description: 'description',
-    banner:
-      'https://images.unsplash.com/photo-1536500152107-01ab1422f932?q=80&w=1740&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    prize: '420 dollars',
-    host: '1234',
-    roles: [],
-    startAt: new Date(),
-    duration: 30,
-    repeat: 0,
-    winnerCount: 1,
-  });
+export function createLottery(lottery: z.infer<typeof LotterySchema>) {
+  db.lotteries.push(LotterySchema.parse(lottery));
   saveDb();
 }
 
