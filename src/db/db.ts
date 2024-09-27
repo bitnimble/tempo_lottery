@@ -3,21 +3,36 @@
 // to deal with concurrency.
 import fs from 'fs';
 import z from 'zod';
-import { LotterySchema } from './schema';
+import { DraftLotterySchema, LotterySchema } from './schema';
 
 const Db = z.object({
   lotteries: z.array(LotterySchema),
+  drafts: z.array(DraftLotterySchema),
 });
 
 let db = loadDbFromDisk();
+
+export function getDb() {
+  return db;
+}
 
 export function getLotteries() {
   return db.lotteries;
 }
 
-export function createLottery(lottery: z.infer<typeof LotterySchema>) {
-  db.lotteries.push(LotterySchema.parse(lottery));
+export function getLottery(id: string) {
+  return db.lotteries.find((l) => l.id === id);
+}
+
+export function getDraftLottery(id: string) {
+  return db.drafts.find((l) => l.id === id);
+}
+
+export function createDraftLottery() {
+  const id = crypto.randomUUID();
+  db.drafts.push(DraftLotterySchema.parse({ id }));
   saveDb();
+  return id;
 }
 
 export function saveDb() {

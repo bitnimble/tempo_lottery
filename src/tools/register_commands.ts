@@ -1,4 +1,10 @@
+import { CREATE_LOTTERY } from '@/discord/commands';
 import fetch, { RequestInit } from 'node-fetch';
+
+const appId = process.env.APP_ID;
+if (!appId) {
+  throw new Error('missing app id');
+}
 
 async function makeDiscordRequest(endpoint: string, options: Partial<RequestInit>) {
   // append endpoint to root API URL
@@ -32,8 +38,10 @@ export async function installGlobalCommands(appId: string, commands: any) {
     // This is calling the bulk overwrite endpoint: https://discord.com/developers/docs/interactions/application-commands#bulk-overwrite-global-application-commands
     const res = await makeDiscordRequest(endpoint, { method: 'PUT', body: commands });
     console.log(res.status);
-    res.json().then((r) => console.log(r));
+    res.json().then((r: any) => console.log(r));
   } catch (err) {
     console.error(err);
   }
 }
+
+installGlobalCommands(appId, [CREATE_LOTTERY]);

@@ -16,12 +16,21 @@ export const LotterySchema = z.object({
   prize: z.string({ description: 'Prize' }),
   host: z.string({ description: 'Host' }),
   roles: z.array(z.string(), {
-    description: 'Required Discord roles needed to participate (one per line)',
+    description: 'Discord roles (one per line) needed to join',
   }),
-  startAt: z.date({ description: 'Date and time to start at (ISO8601 format)' }),
-  duration: z.number({ description: 'Duration of the lottery, in minutes' }).min(1),
-  repeatInterval: z.number({ description: 'How often this lottery repeats, in minutes' }),
+  startAt: z
+    .string({ description: 'Date and time to start at (ISO8601 format)' })
+    .datetime({ offset: true }),
+  duration: z.number({ description: 'Duration of the lottery, in milliseconds' }).min(1),
+  repeatInterval: z.number({ description: 'How often this lottery repeats, in milliseconds' }),
   winnerCount: z.number({ description: 'Maximum number of winners' }).min(1),
 });
 
+export const DraftLotterySchema = LotterySchema.partial().merge(
+  z.object({
+    id: z.string().uuid(),
+  })
+);
+
+export type DraftLottery = z.infer<typeof DraftLotterySchema>;
 export type Lottery = z.infer<typeof LotterySchema>;
