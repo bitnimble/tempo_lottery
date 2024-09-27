@@ -3,25 +3,16 @@
 import { delay } from '@/app/base/delay';
 import { Select } from '@/app/ui/select';
 import { Button as JollyButton } from '@/components/ui/button';
-import { JollyDatePicker, JollyDateRangePicker } from '@/components/ui/date-picker';
-import { JollyDateField } from '@/components/ui/datefield';
+import { JollyDateRangePicker } from '@/components/ui/date-picker';
 import { JollyNumberField } from '@/components/ui/numberfield';
 import { JollyTextField } from '@/components/ui/textfield';
 import { saveLottery, tryPromoteLottery } from '@/db/db_actions';
 import { DraftLottery, LotterySchema, LotteryType } from '@/db/schema';
-import {
-  fromAbsolute,
-  fromDate,
-  getLocalTimeZone,
-  now,
-  parseAbsolute,
-  parseZonedDateTime,
-  ZonedDateTime,
-} from '@internationalized/date';
+import { getLocalTimeZone, now, parseAbsolute, ZonedDateTime } from '@internationalized/date';
 import { Loader2 } from 'lucide-react';
 import { action, observable, runInAction, toJS } from 'mobx';
 import * as mobxReact from 'mobx-react';
-import { DateRange, Form, I18nProvider, PressEvent } from 'react-aria-components';
+import { Form, PressEvent } from 'react-aria-components';
 
 type Store = {
   lottery: DraftLottery;
@@ -35,7 +26,7 @@ const lotteryTypeLabels: Record<LotteryType, string> = {
   [LotteryType.LOWEST_UNIQUE_NUMBER]: 'Lowest unique number',
 };
 
-export const LotteryView = (props: { lottery: DraftLottery }) => {
+export const LotteryView = (props: { isDraft: boolean; lottery: DraftLottery }) => {
   const store = observable<Store>({
     lottery: props.lottery,
     isSaving: false,
@@ -46,7 +37,7 @@ export const LotteryView = (props: { lottery: DraftLottery }) => {
   const onSave = async (e: PressEvent) => {
     runInAction(() => (store.isSaving = true));
     await saveLottery(toJS(store.lottery));
-    await delay(1000);
+    await delay(100);
     runInAction(() => (store.isSaving = false));
   };
 
@@ -64,11 +55,14 @@ export const LotteryView = (props: { lottery: DraftLottery }) => {
     // Redirect to new promoted lottery page
   };
 
-  return <_LotteryView store={store} onSave={onSave} onPublish={onPublish} />;
+  return (
+    <_LotteryView isDraft={props.isDraft} store={store} onSave={onSave} onPublish={onPublish} />
+  );
 };
 
 const _LotteryView = mobxReact.observer(
   (props: {
+    isDraft: boolean;
     store: Store;
     onSave: (e: PressEvent) => Promise<void>;
     onPublish: (e: PressEvent) => Promise<void>;
@@ -152,6 +146,16 @@ const _LotteryView = mobxReact.observer(
           value={l.winnerCount || 1}
           onChange={action((v) => (l.winnerCount = v))}
         />
+        <JollyNumberField
+          label="Minimum bid"
+          value={l.minimumBid || 1}
+          onChange={action((v) => (l.minimumBid = v))}
+        />
+        <JollyNumberField
+          label="Maximum bid"
+          value={l.maximumBid || 1000}
+          onChange={action((v) => (l.maximumBid = v))}
+        />
 
         {props.store.error && (
           <div className="w-full bg-red-600 rounded-md text-white my-4 p-4">
@@ -165,10 +169,12 @@ const _LotteryView = mobxReact.observer(
             {props.store.isSaving && <Loader2 className="ml-2 size-4 animate-spin" />}
           </JollyButton>
 
-          <JollyButton isDisabled={isSubmitting} variant="secondary" onPress={props.onPublish}>
-            Publish
-            {props.store.isPublishing && <Loader2 className="ml-2 size-4 animate-spin" />}
-          </JollyButton>
+          {props.isDraft && (
+            <JollyButton isDisabled={isSubmitting} variant="secondary" onPress={props.onPublish}>
+              Publish
+              {props.store.isPublishing && <Loader2 className="ml-2 size-4 animate-spin" />}
+            </JollyButton>
+          )}
         </div>
       </Form>
     );

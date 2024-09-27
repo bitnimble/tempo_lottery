@@ -1,5 +1,6 @@
-import { CREATE_LOTTERY } from '@/discord/commands';
+import { CREATE_LOTTERY, ENTER_LOTTERY } from '@/discord/commands';
 import fetch, { RequestInit } from 'node-fetch';
+import 'dotenv/config';
 
 const appId = process.env.APP_ID;
 if (!appId) {
@@ -44,4 +45,4 @@ export async function installGlobalCommands(appId: string, commands: any) {
   }
 }
 
-installGlobalCommands(appId, [CREATE_LOTTERY]);
+installGlobalCommands(appId, [CREATE_LOTTERY, ENTER_LOTTERY]);

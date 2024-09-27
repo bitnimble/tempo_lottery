@@ -24,6 +24,8 @@ export const LotterySchema = z.object({
   duration: z.number({ description: 'Duration of the lottery, in milliseconds' }).min(1),
   repeatInterval: z.number({ description: 'How often this lottery repeats, in milliseconds' }),
   winnerCount: z.number({ description: 'Maximum number of winners' }).min(1),
+  minimumBid: z.number({ description: 'Minimum possible bid number' }).default(1),
+  maximumBid: z.number({ description: 'Maximum possible bid number ' }).default(1000),
 });
 
 export const DraftLotterySchema = LotterySchema.partial().merge(

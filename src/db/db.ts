@@ -10,37 +10,37 @@ const Db = z.object({
   drafts: z.array(DraftLotterySchema),
 });
 
-let db = loadDbFromDisk();
+reloadDb();
 
 export function getDb() {
-  return db;
+  return (globalThis as any).lotteryDb as z.infer<typeof Db>;
 }
 
 export function getLotteries() {
-  return db.lotteries;
+  return getDb().lotteries;
 }
 
 export function getLottery(id: string) {
-  return db.lotteries.find((l) => l.id === id);
+  return getDb().lotteries.find((l) => l.id === id);
 }
 
 export function getDraftLottery(id: string) {
-  return db.drafts.find((l) => l.id === id);
+  return getDb().drafts.find((l) => l.id === id);
 }
 
 export function createDraftLottery() {
   const id = crypto.randomUUID();
-  db.drafts.push(DraftLotterySchema.parse({ id }));
+  getDb().drafts.push(DraftLotterySchema.parse({ id }));
   saveDb();
   return id;
 }
 
 export function saveDb() {
-  fs.writeFileSync('db.json', JSON.stringify(Db.parse(db), undefined, 2));
+  fs.writeFileSync('db.json', JSON.stringify(Db.parse(getDb()), undefined, 2));
 }
 
 export function reloadDb() {
-  db = loadDbFromDisk();
+  (globalThis as any).lotteryDb = loadDbFromDisk();
 }
 
 function loadDbFromDisk() {

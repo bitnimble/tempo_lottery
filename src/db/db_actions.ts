@@ -9,6 +9,7 @@ export async function saveLottery(lottery: DraftLottery | Lottery) {
   const existing = db.lotteries.findIndex((l) => l.id === lottery.id);
   if (existing >= 0) {
     db.lotteries.splice(existing, 1, LotterySchema.parse(lottery));
+    saveDb();
     return;
   }
 

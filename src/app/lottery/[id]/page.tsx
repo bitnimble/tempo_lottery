@@ -18,7 +18,7 @@ function LotteryPage(props: { lottery: Lottery }) {
   return (
     <div className="prose flex flex-col max-w-5xl m-auto mt-8">
       <h2>Lottery</h2>
-      <LotteryView lottery={props.lottery} />
+      <LotteryView isDraft={false} lottery={props.lottery} />
     </div>
   );
 }
@@ -27,7 +27,7 @@ function DraftLotteryPage(props: { lottery: DraftLottery }) {
   return (
     <div className="prose flex flex-col max-w-5xl m-auto mt-8">
       <h2>Draft lottery</h2>
-      <LotteryView lottery={props.lottery} />
+      <LotteryView isDraft={true} lottery={props.lottery} />
     </div>
   );
 }
