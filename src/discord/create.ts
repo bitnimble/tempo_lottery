@@ -1,7 +1,7 @@
 import { createDraftLottery, getLotteries, getLottery } from '@/db/db';
 import { Lottery } from '@/db/schema';
 import { CREATE_LOTTERY, ENTER_LOTTERY } from '@/discord/commands';
-import { loadAllLotterySchedules } from '@/lottery/lottery';
+import { BidResult, loadAllLotterySchedules, makeBid } from '@/lottery/lottery';
 import {
   ActionRowBuilder,
   ChatInputCommandInteraction,
@@ -18,8 +18,6 @@ import {
 } from 'discord.js';
 
 export function createDiscordBot() {
-  loadAllLotterySchedules();
-
   const client = new Client({
     intents: [GatewayIntentBits.Guilds],
   });
@@ -70,16 +68,30 @@ export function createDiscordBot() {
               );
               return;
             }
+            if (lottery.bids.some((b) => b.user === interaction.user.id)) {
+              await interaction.editReply({
+                content: `You have already bid on this lottery.`,
+              });
+              return;
+            }
 
             const bidResult = await collectBidForLottery(interaction, confirmation, lottery);
             if (bidResult == null) {
               return;
             }
             const [modalConfirmation, bid] = bidResult;
-            await modalConfirmation.reply({
-              content: `You have bid \`${bid}\` on the "${lottery.title}" lottery`,
-              ephemeral: true,
-            });
+            const result = makeBid(lottery, interaction.user.id, bid);
+            if (result == BidResult.ALREADY_BID) {
+              await modalConfirmation.reply({
+                content: `You have already bid on this lottery.`,
+                ephemeral: true,
+              });
+            } else {
+              await modalConfirmation.reply({
+                content: `You have bid \`${bid}\` on the "${lottery.title}" lottery`,
+                ephemeral: true,
+              });
+            }
             await interaction.deleteReply();
           } catch (e) {
             console.log(e);

@@ -7,5 +7,5 @@ export default function Discord() {
     return <div>Discord bot already active! Logged in as {client.user.tag}</div>;
   }
   installDiscordBot();
-  return <div>Activated the Discord bot</div>;
+  return <div>Activated the Discord bot and loaded job scheduler</div>;
 }

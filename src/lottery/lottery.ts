@@ -1,7 +1,31 @@
 import { getLotteries } from '@/db/db';
+import { saveLottery } from '@/db/db_actions';
 import { Bid, Lottery } from '@/db/schema';
-import { now, parseAbsolute } from '@internationalized/date';
+import { now, parseAbsolute, ZonedDateTime } from '@internationalized/date';
+import { randomUUID } from 'crypto';
 import schedule from 'node-schedule';
+
+export const enum BidResult {
+  SUCCESS,
+  ALREADY_BID,
+}
+
+export function makeBid(lottery: Lottery, user: string, bid: number): BidResult {
+  if (lottery.bids.some((b) => b.user === user)) {
+    return BidResult.ALREADY_BID;
+  }
+
+  lottery.bids.push({
+    id: randomUUID(),
+    placedAt: now('UTC').toAbsoluteString(),
+    user,
+    bid,
+  });
+
+  saveLottery(lottery);
+
+  return BidResult.SUCCESS;
+}
 
 export function processLotteryResults(lottery: Lottery) {
   const winners = [];
@@ -65,6 +89,12 @@ export function processLotteryResults(lottery: Lottery) {
 export function updateLotterySchedule(lottery: Lottery) {
   const job = schedule.scheduledJobs[lottery.id];
   const nextResultsDate = getNextResultsDate(lottery);
+  if (!nextResultsDate) {
+    console.log(
+      `Attempted to schedule lottery "${lottery.title}" (${lottery.id}), but it was a once-off lottery and has expired.`
+    );
+    return;
+  }
   if (!job) {
     schedule.scheduleJob(lottery.id, nextResultsDate, () => processLotteryResults(lottery));
   } else {
@@ -73,17 +103,38 @@ export function updateLotterySchedule(lottery: Lottery) {
 }
 
 // Gets the closest Date in the future for a recurrence of a given Lottery
-function getNextResultsDate(lottery: Lottery) {
+export function getNextResultsDate(lottery: Lottery): Date | undefined {
   // Do all arithmetic in UTC to ensure no DST or timezone messiness
   const startZdt = parseAbsolute(lottery.startAt, 'UTC');
-  const start = startZdt.toDate();
   const { duration, repeatInterval } = lottery;
-  const msDiff = +now('UTC').toDate() - +start;
+  const nowUtc = now('UTC');
+  const msDiff = getMsDiff(nowUtc, startZdt);
+  const firstDrawDate = drawDateFor(startZdt, lottery.duration);
+
+  if (msDiff < 0) {
+    // Start date is in the future already
+    return firstDrawDate.toDate();
+  }
+
+  if (repeatInterval <= 0 && getMsDiff(firstDrawDate, nowUtc) <= 0) {
+    // Draw date has passed, and there are no more recurrences - this lottery will never draw.
+    return;
+  }
+
+  // Otherwise, find the closest recurrence time
   const closestMultiple = Math.ceil(msDiff / repeatInterval);
-  const next = startZdt
+  return startZdt
     .add({ milliseconds: closestMultiple * repeatInterval })
-    .add({ milliseconds: duration });
-  return next.toDate();
+    .add({ milliseconds: duration })
+    .toDate();
+}
+
+function getMsDiff(a: ZonedDateTime, b: ZonedDateTime) {
+  return +a.toDate() - +b.toDate();
+}
+
+function drawDateFor(start: ZonedDateTime, duration: number) {
+  return start.add({ milliseconds: duration });
 }
 
 export function deleteLotterySchedule(lottery: Lottery) {
@@ -93,7 +144,8 @@ export function deleteLotterySchedule(lottery: Lottery) {
   }
 }
 
-export function loadAllLotterySchedules() {
+export async function loadAllLotterySchedules() {
+  await schedule.gracefulShutdown();
   for (const lottery of getLotteries()) {
     updateLotterySchedule(lottery);
   }

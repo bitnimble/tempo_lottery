@@ -132,7 +132,6 @@ const _LotteryView = mobxReact.observer(
           }
           onChange={action((v: { start: ZonedDateTime; end: ZonedDateTime }) => {
             l.startAt = v.start.toAbsoluteString();
-            console.log(l.startAt);
             l.duration = +v.end.toDate() - +v.start.toDate();
           })}
         />
