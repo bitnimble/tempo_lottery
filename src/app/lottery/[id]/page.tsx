@@ -1,6 +1,6 @@
 import { LotteryView } from '@/app/lottery/[id]/lottery_view';
 import { getDraftLottery, getLottery } from '@/db/db';
-import { DraftLottery, Lottery } from '@/db/schema';
+import { Lottery } from '@/db/schema';
 import { getNextResultsDate } from '@/lottery/lottery';
 
 export default function Page({ params }: { params: { id: string } }) {
@@ -27,7 +27,7 @@ function LotteryPage(props: { lottery: Lottery }) {
   );
 }
 
-function DraftLotteryPage(props: { lottery: DraftLottery }) {
+function DraftLotteryPage(props: { lottery: Lottery }) {
   return (
     <div className="prose flex flex-col max-w-5xl m-auto my-8">
       <h2>Draft lottery</h2>

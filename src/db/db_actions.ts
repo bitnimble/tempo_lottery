@@ -1,9 +1,9 @@
 'use server';
 
 import { getDb, saveDb } from '@/db/db';
-import { DraftLottery, Lottery, LotterySchema, DraftLotterySchema } from '@/db/schema';
+import { Lottery, LotterySchema } from '@/db/schema';
 
-export async function saveLottery(lottery: DraftLottery | Lottery) {
+export async function saveLottery(lottery: Lottery) {
   const db = getDb();
 
   const existing = db.lotteries.findIndex((l) => l.id === lottery.id);
@@ -15,7 +15,7 @@ export async function saveLottery(lottery: DraftLottery | Lottery) {
 
   const existingDraft = db.drafts.findIndex((l) => l.id === lottery.id);
   if (existingDraft >= 0) {
-    db.drafts.splice(existingDraft, 1, DraftLotterySchema.parse(lottery));
+    db.drafts.splice(existingDraft, 1, LotterySchema.parse(lottery));
   }
 
   saveDb();

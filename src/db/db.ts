@@ -3,11 +3,11 @@
 // to deal with concurrency.
 import fs from 'fs';
 import z from 'zod';
-import { DraftLottery, DraftLotterySchema, LotterySchema } from './schema';
+import { Lottery, LotterySchema } from './schema';
 
 const Db = z.object({
   lotteries: z.array(LotterySchema),
-  drafts: z.array(DraftLotterySchema),
+  drafts: z.array(LotterySchema),
 });
 
 reloadDb();
@@ -28,9 +28,9 @@ export function getDraftLottery(id: string) {
   return getDb().drafts.find((l) => l.id === id);
 }
 
-export function createDraftLottery(params: Omit<DraftLottery, 'id'>) {
+export function createDraftLottery(params: Pick<Lottery, 'channel' | 'roles' | 'creator'>) {
   const id = crypto.randomUUID();
-  getDb().drafts.push(DraftLotterySchema.parse({ ...params, id }));
+  getDb().drafts.push(LotterySchema.parse({ ...params, id }));
   saveDb();
   return id;
 }

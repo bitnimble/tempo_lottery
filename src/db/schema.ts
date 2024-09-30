@@ -49,12 +49,5 @@ export const LotterySchema = z.object({
   bids: z.array(BidSchema),
 });
 
-export const DraftLotterySchema = LotterySchema.partial().merge(
-  z.object({
-    id: z.string().uuid(),
-  })
-);
-
 export type Bid = z.infer<typeof BidSchema>;
-export type DraftLottery = z.infer<typeof DraftLotterySchema>;
 export type Lottery = z.infer<typeof LotterySchema>;

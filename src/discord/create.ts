@@ -44,7 +44,7 @@ export function createDiscordBot() {
               getLotteries().map((l) => {
                 return new StringSelectMenuOptionBuilder()
                   .setLabel(l.title)
-                  .setDescription(l.description)
+                  .setDescription(l.description || '')
                   .setValue(l.id);
               })
             );

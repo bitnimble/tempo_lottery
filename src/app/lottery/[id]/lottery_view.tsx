@@ -7,7 +7,7 @@ import { JollyDateRangePicker } from '@/components/ui/date-picker';
 import { JollyNumberField } from '@/components/ui/numberfield';
 import { JollyTextField } from '@/components/ui/textfield';
 import { saveLottery, tryPromoteLottery } from '@/db/db_actions';
-import { DraftLottery, LotterySchema, LotteryType } from '@/db/schema';
+import { Lottery, LotterySchema, LotteryType } from '@/db/schema';
 import { getLocalTimeZone, now, parseAbsolute, ZonedDateTime } from '@internationalized/date';
 import { Loader2 } from 'lucide-react';
 import { action, observable, runInAction, toJS } from 'mobx';
@@ -15,7 +15,7 @@ import * as mobxReact from 'mobx-react';
 import { Form, PressEvent } from 'react-aria-components';
 
 type Store = {
-  lottery: DraftLottery;
+  lottery: Lottery;
   isSaving: boolean;
   isPublishing: boolean;
   error: string | undefined;
@@ -26,7 +26,7 @@ const lotteryTypeLabels: Record<LotteryType, string> = {
   [LotteryType.LOWEST_UNIQUE_NUMBER]: 'Lowest unique number',
 };
 
-export const LotteryView = (props: { isDraft: boolean; lottery: DraftLottery }) => {
+export const LotteryView = (props: { isDraft: boolean; lottery: Lottery }) => {
   const store = observable<Store>({
     lottery: props.lottery,
     isSaving: false,
@@ -75,7 +75,7 @@ const _LotteryView = mobxReact.observer(
         <JollyTextField label="ID" value={l.id} isReadOnly />
         <JollyTextField
           label="Lottery name"
-          value={l.title || ''}
+          value={l.title}
           onChange={action((v) => (l.title = v))}
         />
         <Select
@@ -104,7 +104,7 @@ const _LotteryView = mobxReact.observer(
         />
         <JollyTextField
           label="Creator"
-          value={l.creator || ''}
+          value={l.creator}
           onChange={action((v) => (l.creator = v))}
         />
         <JollyTextField
@@ -115,21 +115,13 @@ const _LotteryView = mobxReact.observer(
         />
         <JollyDateRangePicker
           label="Start date"
-          defaultValue={{
-            start: now(getLocalTimeZone()),
-            end: now(getLocalTimeZone()).add({ weeks: 1 }),
-          }}
           granularity="minute"
-          value={
-            l.startAt && l.duration
-              ? {
-                  start: parseAbsolute(l.startAt, getLocalTimeZone()),
-                  end: parseAbsolute(l.startAt, getLocalTimeZone()).add({
-                    milliseconds: l.duration,
-                  }),
-                }
-              : undefined
-          }
+          value={{
+            start: parseAbsolute(l.startAt, getLocalTimeZone()),
+            end: parseAbsolute(l.startAt, getLocalTimeZone()).add({
+              milliseconds: l.duration,
+            }),
+          }}
           onChange={action((v: { start: ZonedDateTime; end: ZonedDateTime }) => {
             l.startAt = v.start.toAbsoluteString();
             l.duration = +v.end.toDate() - +v.start.toDate();
@@ -137,22 +129,22 @@ const _LotteryView = mobxReact.observer(
         />
         <JollyNumberField
           label="Repeat interval"
-          value={l.repeatInterval || 0}
+          value={l.repeatInterval}
           onChange={action((v) => (l.repeatInterval = v))}
         />
         <JollyNumberField
           label="Max winners"
-          value={l.winnerCount || 1}
+          value={l.winnerCount}
           onChange={action((v) => (l.winnerCount = v))}
         />
         <JollyNumberField
           label="Minimum bid"
-          value={l.minimumBid || 1}
+          value={l.minimumBid}
           onChange={action((v) => (l.minimumBid = v))}
         />
         <JollyNumberField
           label="Maximum bid"
-          value={l.maximumBid || 1000}
+          value={l.maximumBid}
           onChange={action((v) => (l.maximumBid = v))}
         />
 
