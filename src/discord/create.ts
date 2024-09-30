@@ -1,28 +1,25 @@
-import { createDraftLottery, getDb, getLotteries, getLottery } from '@/db/db';
+import { createDraftLottery, getLotteries, getLottery } from '@/db/db';
 import { Lottery } from '@/db/schema';
 import { CREATE_LOTTERY, ENTER_LOTTERY } from '@/discord/commands';
+import { loadAllLotterySchedules } from '@/lottery/lottery';
 import {
   ActionRowBuilder,
   ChatInputCommandInteraction,
   Client,
-  ComponentType,
   Events,
   GatewayIntentBits,
-  Interaction,
-  InteractionType,
   MessageActionRowComponentBuilder,
   MessageComponentInteraction,
-  MessageInteraction,
   ModalActionRowComponentBuilder,
   StringSelectMenuBuilder,
-  StringSelectMenuComponent,
-  StringSelectMenuInteraction,
   StringSelectMenuOptionBuilder,
   TextInputBuilder,
   TextInputStyle,
 } from 'discord.js';
 
 export function createDiscordBot() {
+  loadAllLotterySchedules();
+
   const client = new Client({
     intents: [GatewayIntentBits.Guilds],
   });
