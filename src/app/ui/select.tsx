@@ -19,6 +19,7 @@ export function Select<T extends Key>(
 ) {
   return (
     <JollySelect
+      {...props}
       selectedKey={props.value}
       label={props.label}
       onSelectionChange={(k: Key) => props.onChange(k as T)}
