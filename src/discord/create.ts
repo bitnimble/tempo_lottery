@@ -39,7 +39,6 @@ export function createDiscordBot() {
             creator: interaction.user.id,
             startAt: now('UTC').toAbsoluteString(),
           });
-          console.log('b');
 
           await interaction.reply({
             content: `http://localhost:3000/lottery/${id}`,

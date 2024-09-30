@@ -3,6 +3,7 @@ import { saveLottery } from '@/db/db_actions';
 import { Bid, Lottery } from '@/db/schema';
 import { now, parseAbsolute, ZonedDateTime } from '@internationalized/date';
 import { randomUUID } from 'crypto';
+import { ChannelType, Client, TextBasedChannel } from 'discord.js';
 import schedule from 'node-schedule';
 
 export const enum BidResult {
@@ -28,7 +29,21 @@ export function makeBid(lottery: Lottery, user: string, bid: number): BidResult 
 }
 
 export function processLotteryResults(lottery: Lottery) {
-  const winners = [];
+  const client = (globalThis as any).discordBot as Client | undefined;
+  if (!client) {
+    console.error('Attempted to process lottery results, but the Discord bot was not active');
+    return;
+  }
+
+  if (lottery.bids.length === 0) {
+    console.log(`Lottery ${lottery.id} had no bids`);
+    client.channels.fetch(lottery.channel).then((c) => {
+      if (c && c.type === ChannelType.GuildText) {
+        c.send(`Lottery "${lottery.title}" had no winners, because nobody placed a bid.`);
+      }
+    });
+    return;
+  }
 
   // Group bids by their bidding number
   const remainingBids = new Map<number, Bid[]>();
@@ -41,49 +56,47 @@ export function processLotteryResults(lottery: Lottery) {
     }
   }
 
-  while (winners.length < lottery.winnerCount) {
-    if (remainingBids.size === 0) {
-      // No remaining winners possible as we've exhausted all bids.
-      break;
-    }
-
-    const bidPool = [...remainingBids.keys()];
-    const winningNumber = bidPool[Math.floor(Math.random() * bidPool.length)];
-    const potentialWinners = remainingBids.get(winningNumber);
-    if (potentialWinners == null || potentialWinners.length === 0) {
-      throw new Error('Selected bid group unexpectedly had no bids');
-    }
-
-    winners.push(
-      ...potentialWinners.sort((a, b) => {
-        if (a.placedAt < b.placedAt) {
-          return -1;
-        }
-        if (a.placedAt > b.placedAt) {
-          return 1;
-        }
-        return 0;
-      })
-    );
-
-    // `potentialWinners` didn't satisfy the required winner count, so just delete that whole bid
-    // group and loop.
-    if (winners.length < lottery.winnerCount) {
-      remainingBids.delete(winningNumber);
-    }
+  const bidPool = [...remainingBids.keys()];
+  const winningNumber = bidPool[Math.floor(Math.random() * bidPool.length)];
+  const potentialWinners = remainingBids.get(winningNumber);
+  if (potentialWinners == null || potentialWinners.length === 0) {
+    throw new Error('Selected bid group unexpectedly had no bids');
   }
+
+  const winners = potentialWinners
+    .sort((a, b) => {
+      if (a.placedAt < b.placedAt) {
+        return -1;
+      }
+      if (a.placedAt > b.placedAt) {
+        return 1;
+      }
+      return 0;
+    })
+    .slice(0, lottery.winnerCount);
 
   if (lottery.repeatInterval > 0) {
     updateLotterySchedule(lottery);
   }
 
-  // Winner selection finished - we now have >= winnerCount, so slice the first N.
-  const finalWinners = winners.slice(0, lottery.winnerCount);
   console.log(
-    `Winners of ${lottery.id}: ${finalWinners.map((w) => `${w.user}: ${w.bid}`).join(', ')}`
+    `Winners of "${lottery.title}" (${lottery.id}): ${winners
+      .map((w) => `${w.user}: ${w.bid}`)
+      .join(', ')}`
   );
 
-  // TODO: notify in Discord
+  client.channels.fetch(lottery.channel).then((c) => {
+    if (c && c.type === ChannelType.GuildText) {
+      c.send({
+        allowedMentions: { users: winners.map((w) => w.id) },
+        content: `Lottery "${
+          lottery.title
+        }" has completed! The winning number is \`${winningNumber}\`, and there were ${
+          winners.length
+        } winners:\n${winners.map((w) => `<@${w.id}>`).join('\n')}`,
+      });
+    }
+  });
 }
 
 export function updateLotterySchedule(lottery: Lottery) {
