@@ -2,6 +2,7 @@ import { createDraftLottery, getLotteries, getLottery } from '@/db/db';
 import { Lottery } from '@/db/schema';
 import { CREATE_LOTTERY, ENTER_LOTTERY } from '@/discord/commands';
 import { BidResult, makeBid } from '@/lottery/lottery';
+import { now } from '@internationalized/date';
 import {
   ActionRowBuilder,
   ChatInputCommandInteraction,
@@ -25,12 +26,20 @@ export function createDiscordBot() {
     try {
       if (interaction.isChatInputCommand()) {
         if (interaction.commandName === CREATE_LOTTERY.name) {
+          console.log('Creating lottery!');
           const role = interaction.options.getRole('required_role')?.id;
+          const name = interaction.options.getString('name');
+          if (name == null) {
+            throw new Error('Expected lottery name, but found undefined');
+          }
           const id = createDraftLottery({
+            title: name,
             channel: interaction.options.getChannel('channel')?.id || interaction.channelId,
             roles: role ? [role] : undefined,
             creator: interaction.user.id,
+            startAt: now('UTC').toAbsoluteString(),
           });
+          console.log('b');
 
           await interaction.reply({
             content: `http://localhost:3000/lottery/${id}`,
@@ -110,6 +119,7 @@ export function createDiscordBot() {
       }
     } catch (e) {
       // Modal submission probably expired
+      console.log(e);
     }
   });
   client.once(Events.ClientReady, (readyClient) => {

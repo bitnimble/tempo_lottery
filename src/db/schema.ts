@@ -14,10 +14,12 @@ export const BidSchema = z.object({
 
 export const LotterySchema = z.object({
   id: z.string().uuid(),
-  title: z.string({ description: 'Lottery title' }),
-  lotteryType: z.enum([LotteryType.SIMPLE, LotteryType.LOWEST_UNIQUE_NUMBER], {
-    description: 'Lottery type',
-  }),
+  title: z.string({ description: 'Lottery title' }).default('New lottery'),
+  lotteryType: z
+    .enum([LotteryType.SIMPLE, LotteryType.LOWEST_UNIQUE_NUMBER], {
+      description: 'Lottery type',
+    })
+    .default(LotteryType.SIMPLE),
   description: z.string({ description: 'Description' }).optional(),
   banner: z.string({ description: 'Banner image (URL)' }).optional(),
   prize: z.string({ description: 'Prize description' }).optional(),
@@ -46,7 +48,7 @@ export const LotterySchema = z.object({
   winnerCount: z.number({ description: 'Maximum number of winners' }).min(1).default(1),
   minimumBid: z.number({ description: 'Minimum possible bid number' }).default(1),
   maximumBid: z.number({ description: 'Maximum possible bid number ' }).default(1000),
-  bids: z.array(BidSchema),
+  bids: z.array(BidSchema).default([]),
 });
 
 export type Bid = z.infer<typeof BidSchema>;

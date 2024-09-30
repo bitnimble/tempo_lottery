@@ -3,6 +3,9 @@ import { SlashCommandBuilder } from 'discord.js';
 // Simple test command
 export const CREATE_LOTTERY = new SlashCommandBuilder()
   .setName('create_lottery')
+  .addStringOption((option) =>
+    option.setName('name').setDescription('Name of the lottery').setRequired(true)
+  )
   .addChannelOption((option) =>
     option.setName('channel').setDescription('The channel where the draw results will be posted')
   )

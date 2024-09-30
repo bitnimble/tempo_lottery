@@ -28,7 +28,9 @@ export function getDraftLottery(id: string) {
   return getDb().drafts.find((l) => l.id === id);
 }
 
-export function createDraftLottery(params: Pick<Lottery, 'channel' | 'roles' | 'creator'>) {
+export function createDraftLottery(
+  params: Pick<Lottery, 'title' | 'channel' | 'roles' | 'creator' | 'startAt'>
+) {
   const id = crypto.randomUUID();
   getDb().drafts.push(LotterySchema.parse({ ...params, id }));
   saveDb();

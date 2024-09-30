@@ -3,7 +3,6 @@
 import { delay } from '@/app/base/delay';
 import { Select } from '@/app/ui/select';
 import { Button as JollyButton } from '@/components/ui/button';
-import { JollyDateRangePicker } from '@/components/ui/date-picker';
 import { JollyNumberField } from '@/components/ui/numberfield';
 import { JollyTextField } from '@/components/ui/textfield';
 import { saveLottery, tryPromoteLottery } from '@/db/db_actions';
@@ -12,7 +11,13 @@ import { getLocalTimeZone, now, parseAbsolute, ZonedDateTime } from '@internatio
 import { Loader2 } from 'lucide-react';
 import { action, observable, runInAction, toJS } from 'mobx';
 import * as mobxReact from 'mobx-react';
+import dynamic from 'next/dynamic';
 import { Form, PressEvent } from 'react-aria-components';
+
+const DateRangePicker = dynamic(
+  () => import('@/components/ui/date-picker').then((c) => c.JollyDateRangePicker<ZonedDateTime>),
+  { ssr: false }
+);
 
 type Store = {
   lottery: Lottery;
@@ -81,7 +86,7 @@ const _LotteryView = mobxReact.observer(
         <Select
           label="Lottery type"
           labels={lotteryTypeLabels}
-          values={LotterySchema.shape['lotteryType'].options}
+          values={LotterySchema.shape['lotteryType'].removeDefault().options}
           value={l.lotteryType}
           onChange={action((v: LotteryType) => (l.lotteryType = v))}
         />
@@ -106,6 +111,7 @@ const _LotteryView = mobxReact.observer(
           label="Creator"
           value={l.creator}
           onChange={action((v) => (l.creator = v))}
+          isReadOnly
         />
         <JollyTextField
           label="Roles"
@@ -113,7 +119,7 @@ const _LotteryView = mobxReact.observer(
           onChange={action((v) => (l.roles = v.split('\n').map((l) => l.trim())))}
           textArea
         />
-        <JollyDateRangePicker
+        <DateRangePicker
           label="Start date"
           granularity="minute"
           value={{
