@@ -46,9 +46,9 @@ const ListBoxItem = <T extends object>({
         cn(
           'relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none',
           /* Disabled */
-          'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+          'disabled:pointer-events-none disabled:opacity-50',
           /* Focused */
-          'data-[focused]:bg-accent data-[focused]:text-accent-foreground',
+          'focus:bg-accent focus:text-accent-foreground',
           /* Hovered */
           'data-[hovered]:bg-accent data-[hovered]:text-accent-foreground',
           /* Selection */

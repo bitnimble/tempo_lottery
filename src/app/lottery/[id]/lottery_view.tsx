@@ -77,7 +77,16 @@ const _LotteryView = mobxReact.observer(
 
     return (
       <Form className="flex flex-col gap-4">
-        <JollyTextField label="ID" value={l.id} isReadOnly />
+        <div className="flex gap-4 w-full">
+          <JollyTextField className="flex-1 bg-grey" label="ID" value={l.id} isReadOnly />
+          <JollyTextField
+            className="flex-1"
+            label="Creator"
+            value={l.creator}
+            onChange={action((v) => (l.creator = v))}
+            isReadOnly
+          />
+        </div>
         <JollyTextField
           label="Lottery name"
           value={l.title}
@@ -106,12 +115,6 @@ const _LotteryView = mobxReact.observer(
           label="Prize"
           value={l.prize || ''}
           onChange={action((v) => (l.prize = v))}
-        />
-        <JollyTextField
-          label="Creator"
-          value={l.creator}
-          onChange={action((v) => (l.creator = v))}
-          isReadOnly
         />
         <JollyTextField
           label="Roles"

@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 const labelVariants = cva([
   'text-sm font-medium leading-none',
   /* Disabled */
-  'data-[disabled]:cursor-not-allowed data-[disabled]:opacity-70',
+  'disabled:cursor-not-allowed disabled:opacity-70',
   /* Invalid */
   'group-data-[invalid]:text-destructive',
 ]);
@@ -51,7 +51,7 @@ const fieldGroupVariants = cva('', {
         /* Focus Within */
         'data-[focus-within]:outline-none data-[focus-within]:ring-2 data-[focus-within]:ring-ring data-[focus-within]:ring-offset-2',
         /* Disabled */
-        'data-[disabled]:opacity-50',
+        'disabled:opacity-50',
       ],
       ghost: '',
     },
