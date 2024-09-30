@@ -1,7 +1,7 @@
 import { createDraftLottery, getLotteries, getLottery } from '@/db/db';
 import { Lottery } from '@/db/schema';
 import { CREATE_LOTTERY, ENTER_LOTTERY } from '@/discord/commands';
-import { BidResult, loadAllLotterySchedules, makeBid } from '@/lottery/lottery';
+import { BidResult, makeBid } from '@/lottery/lottery';
 import {
   ActionRowBuilder,
   ChatInputCommandInteraction,
@@ -25,7 +25,13 @@ export function createDiscordBot() {
     try {
       if (interaction.isChatInputCommand()) {
         if (interaction.commandName === CREATE_LOTTERY.name) {
-          const id = createDraftLottery();
+          const role = interaction.options.getRole('required_role')?.id;
+          const id = createDraftLottery({
+            channel: interaction.options.getChannel('channel')?.id || interaction.channelId,
+            roles: role ? [role] : undefined,
+            creator: interaction.user.id,
+          });
+
           await interaction.reply({
             content: `http://localhost:3000/lottery/${id}`,
             ephemeral: true,

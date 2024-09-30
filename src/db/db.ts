@@ -3,7 +3,7 @@
 // to deal with concurrency.
 import fs from 'fs';
 import z from 'zod';
-import { DraftLotterySchema, LotterySchema } from './schema';
+import { DraftLottery, DraftLotterySchema, LotterySchema } from './schema';
 
 const Db = z.object({
   lotteries: z.array(LotterySchema),
@@ -28,9 +28,9 @@ export function getDraftLottery(id: string) {
   return getDb().drafts.find((l) => l.id === id);
 }
 
-export function createDraftLottery() {
+export function createDraftLottery(params: Omit<DraftLottery, 'id'>) {
   const id = crypto.randomUUID();
-  getDb().drafts.push(DraftLotterySchema.parse({ id }));
+  getDb().drafts.push(DraftLotterySchema.parse({ ...params, id }));
   saveDb();
   return id;
 }

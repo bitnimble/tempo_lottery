@@ -104,8 +104,8 @@ const _LotteryView = mobxReact.observer(
         />
         <JollyTextField
           label="Creator"
-          value={l.host || ''}
-          onChange={action((v) => (l.host = v))}
+          value={l.creator || ''}
+          onChange={action((v) => (l.creator = v))}
         />
         <JollyTextField
           label="Roles"
