@@ -1,7 +1,7 @@
 import { createDraftLottery, getLotteries, getLottery } from '@/db/db';
 import { Lottery } from '@/db/schema';
 import { CREATE_LOTTERY, ENTER_LOTTERY } from '@/discord/commands';
-import { BidResult, makeBid } from '@/lottery/lottery';
+import { BidResult, getNextResultsDate, makeBid } from '@/lottery/lottery';
 import { now } from '@internationalized/date';
 import {
   ActionRowBuilder,
@@ -37,11 +37,11 @@ export function createDiscordBot() {
             channel: interaction.options.getChannel('channel')?.id || interaction.channelId,
             roles: role ? [role] : undefined,
             creator: interaction.user.id,
-            startAt: now('UTC').toAbsoluteString(),
+            startAt: now('UTC').set({ second: 0, millisecond: 0 }).toAbsoluteString(),
           });
 
           await interaction.reply({
-            content: `http://localhost:3000/lottery/${id}`,
+            content: `http://${process.env.HOST}/lottery/${id}`,
             ephemeral: true,
           });
         } else if (interaction.commandName === ENTER_LOTTERY.name) {
@@ -49,13 +49,30 @@ export function createDiscordBot() {
             .setCustomId('lottery_id')
             .setPlaceholder('Pick a lottery')
             .addOptions(
-              getLotteries().map((l) => {
-                return new StringSelectMenuOptionBuilder()
-                  .setLabel(l.title)
-                  .setDescription(l.description || '')
-                  .setValue(l.id);
-              })
+              getLotteries()
+                .map((l) => {
+                  const resultsDate = getNextResultsDate(l);
+                  if (!resultsDate || +now('UTC').toDate() - +resultsDate >= 0) {
+                    return;
+                  }
+                  const option = new StringSelectMenuOptionBuilder()
+                    .setLabel(l.title)
+                    .setValue(l.id);
+                  if (l.description) {
+                    option.setDescription(l.description || '');
+                  }
+                  return option;
+                })
+                .filter((l) => l != null)
             );
+
+          if (lotteryOptions.options.length === 0) {
+            await interaction.reply({
+              content: 'There are no active lotteries.',
+              ephemeral: true,
+            });
+            return;
+          }
 
           const row = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
             lotteryOptions
@@ -102,7 +119,7 @@ export function createDiscordBot() {
               });
             } else {
               await modalConfirmation.reply({
-                content: `You have bid \`${bid}\` on the "${lottery.title}" lottery`,
+                content: `You have bid \`${bid}\` on "${lottery.title}"!`,
                 ephemeral: true,
               });
             }

@@ -23,7 +23,7 @@ export function makeBid(lottery: Lottery, user: string, bid: number): BidResult 
     bid,
   });
 
-  saveLottery(lottery);
+  saveLottery(lottery, true);
 
   return BidResult.SUCCESS;
 }
@@ -56,6 +56,7 @@ export function processLotteryResults(lottery: Lottery) {
     }
   }
 
+  // TODO: implement lowest unique number flow
   const bidPool = [...remainingBids.keys()];
   const winningNumber = bidPool[Math.floor(Math.random() * bidPool.length)];
   const potentialWinners = remainingBids.get(winningNumber);
@@ -88,12 +89,12 @@ export function processLotteryResults(lottery: Lottery) {
   client.channels.fetch(lottery.channel).then((c) => {
     if (c && c.type === ChannelType.GuildText) {
       c.send({
-        allowedMentions: { users: winners.map((w) => w.id) },
+        allowedMentions: { users: winners.map((w) => w.user) },
         content: `Lottery "${
           lottery.title
-        }" has completed! The winning number is \`${winningNumber}\`, and there were ${
+        }" is over! The winning number is \`${winningNumber}\`, and there were ${
           winners.length
-        } winners:\n${winners.map((w) => `<@${w.id}>`).join('\n')}`,
+        } winners:\n${winners.map((w) => `<@${w.user}>`).join('\n')}`,
       });
     }
   });
@@ -108,9 +109,12 @@ export function updateLotterySchedule(lottery: Lottery) {
     );
     return;
   }
+  console.log('Updating lottery schedule for ' + lottery.id);
   if (!job) {
+    console.log('Creating new job for ' + lottery.id);
     schedule.scheduleJob(lottery.id, nextResultsDate, () => processLotteryResults(lottery));
   } else {
+    console.log('Rescheduling ' + lottery.id);
     job.reschedule(nextResultsDate);
   }
 }
