@@ -29,7 +29,7 @@ export function getDraftLottery(id: string) {
 }
 
 export function createDraftLottery(
-  params: Pick<Lottery, 'title' | 'channel' | 'roles' | 'creator' | 'startAt'>
+  params: Pick<Lottery, 'title' | 'channel' | 'roles' | 'creator' | 'adminCreator' | 'startAt'>
 ) {
   const id = crypto.randomUUID();
   getDb().drafts.push(LotterySchema.parse({ ...params, id }));

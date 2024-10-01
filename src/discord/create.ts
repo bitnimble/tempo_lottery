@@ -47,6 +47,7 @@ async function handleCreateLottery(interaction: ChatInputCommandInteraction) {
     }
   }
 
+  const creator = interaction.options.getUser('creator')?.id;
   const role = interaction.options.getRole('required_role')?.id;
   const name = interaction.options.getString('name');
   if (name == null) {
@@ -56,7 +57,8 @@ async function handleCreateLottery(interaction: ChatInputCommandInteraction) {
     title: name,
     channel: interaction.options.getChannel('channel')?.id || interaction.channelId,
     roles: role ? [role] : undefined,
-    creator: interaction.user.id,
+    creator: creator || interaction.user.id,
+    adminCreator: interaction.user.id,
     startAt: now('UTC').set({ second: 0, millisecond: 0 }).toAbsoluteString(),
   });
 

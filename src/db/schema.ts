@@ -23,7 +23,13 @@ export const LotterySchema = z.object({
   description: z.string({ description: 'Description' }).optional(),
   banner: z.string({ description: 'Banner image (URL)' }).optional(),
   prize: z.string({ description: 'Prize description' }).optional(),
-  creator: z.string({ description: 'Discord ID of the user who created this lottery' }),
+  creator: z.string({
+    description: 'Discord ID of the user who is credit with creating this lottery',
+  }),
+  adminCreator: z.string({
+    description:
+      'Discord ID of the lottery admin user who actually created this lottery. This is never shown to the public and is only for logging purposes.',
+  }),
   channel: z.string({
     description: 'Discord channel ID for the channel where the draw results will be posted',
   }),

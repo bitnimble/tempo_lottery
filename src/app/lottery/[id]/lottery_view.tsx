@@ -1,6 +1,5 @@
 'use client';
 
-import { delay } from '@/app/base/delay';
 import { Select } from '@/app/ui/select';
 import { Button as JollyButton } from '@/components/ui/button';
 import { JollyNumberField } from '@/components/ui/numberfield';
@@ -42,14 +41,13 @@ export const LotteryView = (props: { isDraft: boolean; lottery: Lottery }) => {
   const onSave = async (e: PressEvent) => {
     runInAction(() => (store.isSaving = true));
     await saveLottery(toJS(store.lottery));
-    await delay(100);
     runInAction(() => (store.isSaving = false));
   };
 
   const onPublish = async (e: PressEvent) => {
     runInAction(() => (store.isPublishing = true));
     try {
-      await saveLottery(toJS(store.lottery));
+      await saveLottery(toJS(store.lottery), true);
       await tryPromoteLottery(store.lottery.id);
     } catch (e: any) {
       runInAction(() => {

@@ -9,6 +9,9 @@ export const CREATE_LOTTERY = new SlashCommandBuilder()
   .addChannelOption((option) =>
     option.setName('channel').setDescription('The channel where the draw results will be posted')
   )
+  .addUserOption((option) =>
+    option.setName('creator').setDescription('The user to credit as creating this lottery')
+  )
   .addRoleOption((option) =>
     option
       .setName('required_role')
