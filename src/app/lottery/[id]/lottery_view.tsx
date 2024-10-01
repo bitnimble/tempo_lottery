@@ -120,7 +120,7 @@ const _LotteryView = mobxReact.observer(
         <div className="flex gap-4 w-full">
           <JollyTextField
             className="flex-1"
-            label="Roles"
+            label="Role IDs needed to participate"
             value={l.roles?.join('\n') || ''}
             onChange={action((v) => (l.roles = v.split('\n').map((l) => l.trim())))}
             textArea

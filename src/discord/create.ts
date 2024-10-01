@@ -1,3 +1,4 @@
+import { Preconditions } from '@/app/base/preconditions';
 import { createDraftLottery, getLotteries, getLottery } from '@/db/db';
 import { Lottery } from '@/db/schema';
 import { CREATE_LOTTERY, ENTER_LOTTERY } from '@/discord/commands';
@@ -9,6 +10,7 @@ import {
   Client,
   Events,
   GatewayIntentBits,
+  GuildMemberRoleManager,
   MessageActionRowComponentBuilder,
   MessageComponentInteraction,
   ModalActionRowComponentBuilder,
@@ -19,6 +21,32 @@ import {
 } from 'discord.js';
 
 async function handleCreateLottery(interaction: ChatInputCommandInteraction) {
+  const roles = interaction.member?.roles;
+  const lotteryAdminRole = Preconditions.checkExists(process.env.LOTTERY_ADMIN_ROLE);
+  if (roles == null) {
+    await interaction.reply({
+      content: 'Could not load your user roles; please try again later',
+      ephemeral: true,
+    });
+    return;
+  } else if (roles instanceof GuildMemberRoleManager) {
+    if (!roles.cache.has(lotteryAdminRole)) {
+      await interaction.reply({
+        content: 'You do not have permission to create a lottery.',
+        ephemeral: true,
+      });
+      return;
+    }
+  } else {
+    if (!roles.includes(lotteryAdminRole)) {
+      await interaction.reply({
+        content: 'You do not have permission to create a lottery.',
+        ephemeral: true,
+      });
+      return;
+    }
+  }
+
   const role = interaction.options.getRole('required_role')?.id;
   const name = interaction.options.getString('name');
   if (name == null) {
@@ -161,6 +189,11 @@ async function collectBidForLottery(
 }
 
 export function createDiscordBot() {
+  if (!process.env.LOTTERY_ADMIN_ROLE || process.env.LOTTERY_ADMIN_ROLE.trim() === '') {
+    throw new Error(
+      'LOTTERY_ADMIN_ROLE is missing from .env or empty, but is required to start the Discord bot'
+    );
+  }
   const client = new Client({
     intents: [GatewayIntentBits.Guilds],
   });
