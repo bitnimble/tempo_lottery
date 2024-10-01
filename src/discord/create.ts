@@ -122,9 +122,11 @@ async function handleEnterLottery(interaction: ChatInputCommandInteraction) {
       await interaction.editReply('The selected lottery is no longer available. Please try again.');
       return;
     }
-    if (lottery.bids.some((b) => b.user === interaction.user.id)) {
+    if (
+      lottery.bids.filter((b) => b.user === interaction.user.id).length >= lottery.maxBidsPerUser
+    ) {
       await interaction.editReply({
-        content: `You have already bid on this lottery.`,
+        content: `You have already bid the maximum number of times on this lottery (${lottery.maxBidsPerUser}).`,
       });
       return;
     }
@@ -137,7 +139,7 @@ async function handleEnterLottery(interaction: ChatInputCommandInteraction) {
     const result = makeBid(lottery, interaction.user.id, bid);
     if (result == BidResult.ALREADY_BID) {
       await modalConfirmation.reply({
-        content: `You have already bid on this lottery.`,
+        content: `You have already bid the maximum number of times on this lottery (${lottery.maxBidsPerUser}).`,
         ephemeral: true,
       });
     } else {

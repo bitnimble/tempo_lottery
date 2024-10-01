@@ -54,6 +54,9 @@ export const LotterySchema = z.object({
   winnerCount: z.number({ description: 'Maximum number of winners' }).min(1).default(1),
   minimumBid: z.number({ description: 'Minimum possible bid number' }).default(1),
   maximumBid: z.number({ description: 'Maximum possible bid number ' }).default(1000),
+  maxBidsPerUser: z
+    .number({ description: 'Maximum number of bids a single user can make' })
+    .default(1),
   bids: z.array(BidSchema).default([]),
   isAnnounced: z
     .boolean({

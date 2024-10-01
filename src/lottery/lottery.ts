@@ -1,6 +1,6 @@
 import { getLotteries, getLottery } from '@/db/db';
 import { saveLottery } from '@/db/db_actions';
-import { Bid, Lottery } from '@/db/schema';
+import { Bid, Lottery, LotteryType } from '@/db/schema';
 import { now, parseAbsolute, ZonedDateTime } from '@internationalized/date';
 import { randomUUID } from 'crypto';
 import { ChannelType, Client, EmbedBuilder } from 'discord.js';
@@ -12,7 +12,7 @@ export const enum BidResult {
 }
 
 export function makeBid(lottery: Lottery, user: string, bid: number): BidResult {
-  if (lottery.bids.some((b) => b.user === user)) {
+  if (lottery.bids.filter((b) => b.user === user).length >= lottery.maxBidsPerUser) {
     return BidResult.ALREADY_BID;
   }
 
@@ -28,7 +28,7 @@ export function makeBid(lottery: Lottery, user: string, bid: number): BidResult 
   return BidResult.SUCCESS;
 }
 
-export function processLotteryResults(lottery: Lottery) {
+async function processLotteryResults(lottery: Lottery) {
   const client = (globalThis as any).discordBot as Client | undefined;
   if (!client) {
     console.error('Attempted to process lottery results, but the Discord bot was not active');
@@ -46,35 +46,49 @@ export function processLotteryResults(lottery: Lottery) {
   }
 
   // Group bids by their bidding number
-  const remainingBids = new Map<number, Bid[]>();
+  const bidMapping = new Map<number, Bid[]>();
   for (const b of lottery.bids) {
-    const existing = remainingBids.get(b.bid);
+    const existing = bidMapping.get(b.bid);
     if (!existing) {
-      remainingBids.set(b.bid, [b]);
+      bidMapping.set(b.bid, [b]);
     } else {
       existing.push(b);
     }
   }
+  const bidPool = [...bidMapping.keys()];
 
-  // TODO: implement lowest unique number flow
-  const bidPool = [...remainingBids.keys()];
-  const winningNumber = bidPool[Math.floor(Math.random() * bidPool.length)];
-  const potentialWinners = remainingBids.get(winningNumber);
-  if (potentialWinners == null || potentialWinners.length === 0) {
-    throw new Error('Selected bid group unexpectedly had no bids');
+  let winners: Bid[] = [];
+  let winningNumber: number | undefined;
+
+  if (lottery.lotteryType === LotteryType.SIMPLE) {
+    winningNumber = bidPool[Math.floor(Math.random() * bidPool.length)];
+    const potentialWinners = bidMapping.get(winningNumber);
+    if (potentialWinners == null || potentialWinners.length === 0) {
+      throw new Error('Selected bid group unexpectedly had no bids');
+    }
+
+    winners = potentialWinners
+      .sort((a, b) => {
+        if (a.placedAt < b.placedAt) {
+          return -1;
+        }
+        if (a.placedAt > b.placedAt) {
+          return 1;
+        }
+        return 0;
+      })
+      .slice(0, lottery.winnerCount);
+  } else {
+    const sortedBidPool = bidPool.sort((a, b) => a - b);
+    for (const bid of sortedBidPool) {
+      const bids = bidMapping.get(bid);
+      if (bids && bids.length === 1) {
+        winners = bids;
+        winningNumber = bids[0].bid;
+        break;
+      }
+    }
   }
-
-  const winners = potentialWinners
-    .sort((a, b) => {
-      if (a.placedAt < b.placedAt) {
-        return -1;
-      }
-      if (a.placedAt > b.placedAt) {
-        return 1;
-      }
-      return 0;
-    })
-    .slice(0, lottery.winnerCount);
 
   if (lottery.repeatInterval > 0) {
     updateLotterySchedule(lottery);
@@ -86,18 +100,20 @@ export function processLotteryResults(lottery: Lottery) {
       .join(', ')}`
   );
 
-  client.channels.fetch(lottery.channel).then((c) => {
-    if (c && c.type === ChannelType.GuildText) {
-      c.send({
-        allowedMentions: { users: winners.map((w) => w.user) },
-        content: `Lottery "${
+  const channel = await client.channels.fetch(lottery.channel);
+
+  if (!channel || channel.type !== ChannelType.GuildText) {
+    return;
+  }
+  const content =
+    winners.length === 1
+      ? `Lottery "${lottery.title}" is over! The winning number is \`${winningNumber}\`, and the winner is <@${winners[0].user}>`
+      : `Lottery "${
           lottery.title
         }" is over! The winning number is \`${winningNumber}\`, and there were ${
           winners.length
-        } winners:\n${winners.map((w) => `<@${w.user}>`).join('\n')}`,
-      });
-    }
-  });
+        } winners:\n${winners.map((w) => `<@${w.user}>`).join('\n')}`;
+  await channel.send({ allowedMentions: { users: winners.map((w) => w.user) }, content });
 }
 
 // Take ID instead of Lottery so that we don't capture the lottery metadata at the time of scheduling
@@ -176,7 +192,7 @@ export async function updateLotterySchedule(lottery: Lottery) {
   // Create new ones
   createLotteryDrawJob(lottery, drawDate);
   if (!lottery.isAnnounced) {
-    createLotteryAnnounceJob(lottery, drawDate);
+    await createLotteryAnnounceJob(lottery, drawDate);
   }
 }
 

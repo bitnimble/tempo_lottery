@@ -130,6 +130,12 @@ const _LotteryView = mobxReact.observer(
             onChange={action((v) => (l.winnerCount = v))}
           />
         </div>
+
+        <JollyNumberField
+          label="Max bids per user"
+          value={l.maxBidsPerUser}
+          onChange={action((v) => (l.maxBidsPerUser = v))}
+        />
         <DateRangePicker
           label="Start and end date"
           granularity="minute"
