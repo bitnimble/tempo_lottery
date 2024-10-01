@@ -7,7 +7,7 @@ import { JollyNumberField } from '@/components/ui/numberfield';
 import { JollyTextField } from '@/components/ui/textfield';
 import { saveLottery, tryPromoteLottery } from '@/db/db_actions';
 import { Lottery, LotterySchema, LotteryType } from '@/db/schema';
-import { getLocalTimeZone, now, parseAbsolute, ZonedDateTime } from '@internationalized/date';
+import { getLocalTimeZone, parseAbsolute, ZonedDateTime } from '@internationalized/date';
 import { Loader2 } from 'lucide-react';
 import { action, observable, runInAction, toJS } from 'mobx';
 import * as mobxReact from 'mobx-react';
@@ -106,11 +106,6 @@ const _LotteryView = mobxReact.observer(
         </div>
 
         <JollyTextField
-          label="Banner image (URL)"
-          value={l.banner || ''}
-          onChange={action((v) => (l.banner = v))}
-        />
-        <JollyTextField
           label="Prize"
           value={l.prize || ''}
           onChange={action((v) => (l.prize = v))}
@@ -138,7 +133,7 @@ const _LotteryView = mobxReact.observer(
           />
         </div>
         <DateRangePicker
-          label="Start date"
+          label="Start and end date"
           granularity="minute"
           value={{
             start: parseAbsolute(l.startAt, getLocalTimeZone()),

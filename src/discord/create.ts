@@ -1,7 +1,7 @@
 import { createDraftLottery, getLotteries, getLottery } from '@/db/db';
 import { Lottery } from '@/db/schema';
 import { CREATE_LOTTERY, ENTER_LOTTERY } from '@/discord/commands';
-import { BidResult, getNextResultsDate, makeBid } from '@/lottery/lottery';
+import { BidResult, getDrawDate, makeBid } from '@/lottery/lottery';
 import { now } from '@internationalized/date';
 import {
   ActionRowBuilder,
@@ -18,130 +18,112 @@ import {
   TextInputStyle,
 } from 'discord.js';
 
-export function createDiscordBot() {
-  const client = new Client({
-    intents: [GatewayIntentBits.Guilds],
+async function handleCreateLottery(interaction: ChatInputCommandInteraction) {
+  const role = interaction.options.getRole('required_role')?.id;
+  const name = interaction.options.getString('name');
+  if (name == null) {
+    throw new Error('Expected lottery name, but found undefined');
+  }
+  const id = createDraftLottery({
+    title: name,
+    channel: interaction.options.getChannel('channel')?.id || interaction.channelId,
+    roles: role ? [role] : undefined,
+    creator: interaction.user.id,
+    startAt: now('UTC').set({ second: 0, millisecond: 0 }).toAbsoluteString(),
   });
-  client.on(Events.InteractionCreate, async (interaction) => {
-    try {
-      if (interaction.isChatInputCommand()) {
-        if (interaction.commandName === CREATE_LOTTERY.name) {
-          console.log('Creating lottery!');
-          const role = interaction.options.getRole('required_role')?.id;
-          const name = interaction.options.getString('name');
-          if (name == null) {
-            throw new Error('Expected lottery name, but found undefined');
-          }
-          const id = createDraftLottery({
-            title: name,
-            channel: interaction.options.getChannel('channel')?.id || interaction.channelId,
-            roles: role ? [role] : undefined,
-            creator: interaction.user.id,
-            startAt: now('UTC').set({ second: 0, millisecond: 0 }).toAbsoluteString(),
-          });
 
-          await interaction.reply({
-            content: `http://${process.env.HOST}/lottery/${id}`,
-            ephemeral: true,
-          });
-        } else if (interaction.commandName === ENTER_LOTTERY.name) {
-          const lotteryOptions = new StringSelectMenuBuilder()
-            .setCustomId('lottery_id')
-            .setPlaceholder('Pick a lottery')
-            .addOptions(
-              getLotteries()
-                .map((l) => {
-                  const resultsDate = getNextResultsDate(l);
-                  if (!resultsDate || +now('UTC').toDate() - +resultsDate >= 0) {
-                    return;
-                  }
-                  const option = new StringSelectMenuOptionBuilder()
-                    .setLabel(l.title)
-                    .setValue(l.id);
-                  if (l.description) {
-                    option.setDescription(l.description || '');
-                  }
-                  return option;
-                })
-                .filter((l) => l != null)
-            );
+  console.log(`Created lottery "${name}" (${id})`);
 
-          if (lotteryOptions.options.length === 0) {
-            await interaction.reply({
-              content: 'There are no active lotteries.',
-              ephemeral: true,
-            });
+  await interaction.reply({
+    content: `http://${process.env.HOST}/lottery/${id}`,
+    ephemeral: true,
+  });
+}
+
+async function handleEnterLottery(interaction: ChatInputCommandInteraction) {
+  // Create select dropdown with active lotteries to pick from
+  const lotteryOptions = new StringSelectMenuBuilder()
+    .setCustomId('lottery_id')
+    .setPlaceholder('Pick a lottery')
+    .addOptions(
+      getLotteries()
+        .map((l) => {
+          const resultsDate = getDrawDate(l);
+          if (!resultsDate || +now('UTC').toDate() - +resultsDate.toDate() >= 0) {
             return;
           }
-
-          const row = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-            lotteryOptions
-          );
-          const response = await interaction.reply({
-            components: [row],
-            ephemeral: true,
-          });
-
-          try {
-            const confirmation = await response.awaitMessageComponent({
-              filter: (i) => i.user.id === interaction.user.id,
-              time: 60_000,
-            });
-            if (confirmation.customId !== 'lottery_id' || !confirmation.isStringSelectMenu()) {
-              await interaction.editReply('Unknown error.');
-              return;
-            }
-            const selectedLotteryId = confirmation.values[0];
-            const lottery = getLottery(selectedLotteryId);
-            if (!lottery) {
-              await interaction.editReply(
-                'The selected lottery is no longer available. Please try again.'
-              );
-              return;
-            }
-            if (lottery.bids.some((b) => b.user === interaction.user.id)) {
-              await interaction.editReply({
-                content: `You have already bid on this lottery.`,
-              });
-              return;
-            }
-
-            const bidResult = await collectBidForLottery(interaction, confirmation, lottery);
-            if (bidResult == null) {
-              return;
-            }
-            const [modalConfirmation, bid] = bidResult;
-            const result = makeBid(lottery, interaction.user.id, bid);
-            if (result == BidResult.ALREADY_BID) {
-              await modalConfirmation.reply({
-                content: `You have already bid on this lottery.`,
-                ephemeral: true,
-              });
-            } else {
-              await modalConfirmation.reply({
-                content: `You have bid \`${bid}\` on "${lottery.title}"!`,
-                ephemeral: true,
-              });
-            }
-            await interaction.deleteReply();
-          } catch (e) {
-            console.log(e);
-            await interaction.editReply({
-              content: 'A selection was not made within 1 minute; cancelling',
-              components: [],
-            });
+          const option = new StringSelectMenuOptionBuilder().setLabel(l.title).setValue(l.id);
+          if (l.description) {
+            option.setDescription(l.description || '');
           }
-        }
-      }
-    } catch (e) {
-      // Modal submission probably expired
-      console.log(e);
+          return option;
+        })
+        .filter((l) => l != null)
+    );
+
+  if (lotteryOptions.options.length === 0) {
+    await interaction.reply({
+      content: 'There are no active lotteries.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const row = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+    lotteryOptions
+  );
+  const response = await interaction.reply({
+    components: [row],
+    ephemeral: true,
+  });
+
+  try {
+    const confirmation = await response.awaitMessageComponent({
+      filter: (i) => i.user.id === interaction.user.id,
+      time: 60_000,
+    });
+    if (confirmation.customId !== 'lottery_id' || !confirmation.isStringSelectMenu()) {
+      await interaction.editReply('Unknown error.');
+      return;
     }
-  });
-  client.once(Events.ClientReady, (readyClient) => {
-    console.log(`Discord bot loaded! Ready as ${readyClient.user.tag}`);
-  });
-  return client;
+    const selectedLotteryId = confirmation.values[0];
+    const lottery = getLottery(selectedLotteryId);
+    if (!lottery) {
+      await interaction.editReply('The selected lottery is no longer available. Please try again.');
+      return;
+    }
+    if (lottery.bids.some((b) => b.user === interaction.user.id)) {
+      await interaction.editReply({
+        content: `You have already bid on this lottery.`,
+      });
+      return;
+    }
+
+    const bidResult = await collectBidForLottery(interaction, confirmation, lottery);
+    if (bidResult == null) {
+      return;
+    }
+    const [modalConfirmation, bid] = bidResult;
+    const result = makeBid(lottery, interaction.user.id, bid);
+    if (result == BidResult.ALREADY_BID) {
+      await modalConfirmation.reply({
+        content: `You have already bid on this lottery.`,
+        ephemeral: true,
+      });
+    } else {
+      await modalConfirmation.reply({
+        content: `You have bid \`${bid}\` on "${lottery.title}"!`,
+        ephemeral: true,
+      });
+    }
+    await interaction.deleteReply();
+  } catch (e) {
+    console.log(e);
+    await interaction.editReply({
+      content: 'A selection was not made within 1 minute; cancelling',
+      components: [],
+    });
+  }
 }
 
 // Pull this out into its own function, so that if Discord allows us to do chained modals in the
@@ -176,4 +158,29 @@ async function collectBidForLottery(
   }
 
   return [modalConfirmation, bid] as const;
+}
+
+export function createDiscordBot() {
+  const client = new Client({
+    intents: [GatewayIntentBits.Guilds],
+  });
+  client.on(Events.InteractionCreate, async (interaction) => {
+    try {
+      if (!interaction.isChatInputCommand()) {
+        return;
+      }
+      if (interaction.commandName === CREATE_LOTTERY.name) {
+        await handleCreateLottery(interaction);
+      } else if (interaction.commandName === ENTER_LOTTERY.name) {
+        await handleEnterLottery(interaction);
+      }
+    } catch (e) {
+      // Modal submission probably expired
+      console.log(e);
+    }
+  });
+  client.once(Events.ClientReady, (readyClient) => {
+    console.log(`Discord bot loaded! Ready as ${readyClient.user.tag}`);
+  });
+  return client;
 }

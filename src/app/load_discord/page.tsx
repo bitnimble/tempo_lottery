@@ -1,4 +1,4 @@
-import { installDiscordBot } from '@/app/discord/discord_installer';
+import { installDiscordBot } from '@/app/load_discord/discord_installer';
 import { Client } from 'discord.js';
 
 export default function Discord() {

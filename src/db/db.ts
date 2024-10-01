@@ -6,8 +6,8 @@ import z from 'zod';
 import { Lottery, LotterySchema } from './schema';
 
 const Db = z.object({
-  lotteries: z.array(LotterySchema),
-  drafts: z.array(LotterySchema),
+  lotteries: z.array(LotterySchema).default([]),
+  drafts: z.array(LotterySchema).default([]),
 });
 
 reloadDb();
@@ -46,6 +46,11 @@ export function reloadDb() {
 }
 
 function loadDbFromDisk() {
+  if (!fs.existsSync('db.json')) {
+    const db = Db.parse({});
+    fs.writeFileSync('db.json', JSON.stringify(db, undefined, 2));
+    return db;
+  }
   const dbUnparsed = JSON.parse(fs.readFileSync('db.json').toString());
   return Db.parse(dbUnparsed);
 }
