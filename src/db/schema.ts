@@ -63,12 +63,12 @@ export const LotterySchema = z.object({
     .number({ description: 'Maximum number of bids a single user can make' })
     .default(1),
   bids: z.array(BidSchema).default([]),
-  isAnnounced: z
-    .boolean({
+  announcementId: z
+    .string({
       description:
-        'Whether this lottery has been opened and has been announced in the Discord channel',
+        'Discord ID of the announcement message when this lottery opened. Not defined if the announcement has not been made.',
     })
-    .default(false),
+    .optional(),
 });
 
 export type Bid = z.infer<typeof BidSchema>;

@@ -12,7 +12,7 @@ import {
   tryUnpublishLottery,
 } from '@/db/db_actions';
 import { Lottery, LotterySchema, LotteryType, lotteryTypeLabels } from '@/db/schema';
-import { getDiscordUser } from '@/discord/discord_client_actions';
+import { getDiscordUser, sendLotteryOpenEmbed } from '@/discord/discord_client_actions';
 import { getLocalTimeZone, parseAbsolute, ZonedDateTime } from '@internationalized/date';
 import { Loader2 } from 'lucide-react';
 import { action, observable, runInAction, toJS } from 'mobx';
@@ -56,7 +56,11 @@ export const LotteryView = (props: { isDraft: boolean; lottery: Lottery }) => {
 
   const onSave = async () => {
     runInAction(() => (store.state = LoadingState.SAVING));
+    const announced = store.lottery.announcementId != null;
     await saveLottery(toJS(store.lottery));
+    if (announced) {
+      await sendLotteryOpenEmbed(store.lottery.id, true);
+    }
     runInAction(() => (store.state = LoadingState.IDLE));
   };
 

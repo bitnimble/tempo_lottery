@@ -136,7 +136,7 @@ async function handleEnterLottery(interaction: ChatInputCommandInteraction) {
       return;
     }
     const [modalConfirmation, bids] = bidsResult;
-    const successfulBids = makeBids(lottery, interaction.user.id, bids);
+    const successfulBids = await makeBids(lottery, interaction.user.id, bids);
     if (successfulBids < bids.length) {
       await modalConfirmation.reply({
         content: `You hit the maximum number of bids (${

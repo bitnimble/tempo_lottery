@@ -1,10 +1,10 @@
 import { getLotteries, getLottery } from '@/db/db';
 import { saveLottery } from '@/db/db_actions';
-import { Bid, Lottery, LotteryType, lotteryTypeLabels } from '@/db/schema';
-import { getDiscordUser } from '@/discord/discord_client_actions';
+import { Bid, Lottery, LotteryType } from '@/db/schema';
+import { sendLotteryOpenEmbed } from '@/discord/discord_client_actions';
 import { now, parseAbsolute, ZonedDateTime } from '@internationalized/date';
 import { randomUUID } from 'crypto';
-import { ChannelType, Client, EmbedBuilder } from 'discord.js';
+import { ChannelType, Client } from 'discord.js';
 import schedule from 'node-schedule';
 
 // Makes N bids, and returns the number of bids that were successfully entered.
@@ -122,38 +122,6 @@ async function processLotteryResults(id: string) {
   await channel.send({ allowedMentions: { users: winners.map((w) => w.user) }, content });
 }
 
-// Take ID instead of Lottery so that we don't capture the lottery metadata at the time of scheduling
-async function sendLotteryOpenEmbed(id: string) {
-  const lottery = getLottery(id);
-  if (!lottery) {
-    throw new Error('Tried to send lottery open message but it did not exist in the DB: ' + id);
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const client = (globalThis as any).discordBot as Client | undefined;
-  const resultsDate = getDrawDate(lottery);
-  if (!resultsDate || !client) {
-    return;
-  }
-
-  const channel = await client.channels.fetch(lottery.channel);
-  if (!channel || channel.type !== ChannelType.GuildText) {
-    return;
-  }
-  const discordUser = await getDiscordUser(lottery.creator);
-  const embed = new EmbedBuilder()
-    .setTitle(lottery.title)
-    .setDescription(lottery.description || null)
-    .setAuthor(discordUser || null)
-    .addFields(
-      { name: 'Type', value: lotteryTypeLabels[lottery.lotteryType], inline: true },
-      { name: 'Prize', value: lottery.prize || '(none)', inline: true },
-      { name: 'Closes', value: `<t:${Math.floor(+resultsDate.toDate() / 1000)}:R>`, inline: true }
-    );
-  channel.send({ embeds: [embed] });
-  await saveLottery({ ...lottery, isAnnounced: true }, true);
-}
-
 function createLotteryDrawJob(lottery: Lottery, drawDate: ZonedDateTime) {
   console.log('Updating lottery schedule for ' + lottery.id);
   console.log('Creating new job for ' + lottery.id);
@@ -199,7 +167,7 @@ export async function updateLotterySchedule(lottery: Lottery) {
     return;
   }
   createLotteryDrawJob(lottery, drawDate);
-  if (!lottery.isAnnounced) {
+  if (lottery.announcementId == null) {
     await createLotteryAnnounceJob(lottery, drawDate);
   }
 }
