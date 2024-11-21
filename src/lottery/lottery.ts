@@ -120,6 +120,7 @@ async function processLotteryResults(id: string) {
           winners.length
         } winners:\n${winners.map((w) => `<@${w.user}>`).join('\n')}`;
   await channel.send({ allowedMentions: { users: winners.map((w) => w.user) }, content });
+  await sendLotteryAnnouncement(lottery.id, true);
 }
 
 function createLotteryDrawJob(lottery: Lottery, drawDate: ZonedDateTime) {
@@ -159,7 +160,7 @@ export async function updateLotterySchedule(lottery: Lottery) {
   }
 
   // Create new scheduled jobs
-  const drawDate = getDrawDate(lottery);
+  const drawDate = getNextDrawDate(lottery);
   if (!drawDate) {
     console.log(
       `Attempted to update schedule for lottery "${lottery.title}" (${lottery.id}), but it was a once-off lottery and has expired.`
@@ -172,8 +173,8 @@ export async function updateLotterySchedule(lottery: Lottery) {
   }
 }
 
-// Gets the closest end Date in the future for a recurrence of a given Lottery
-export function getDrawDate(lottery: Lottery): ZonedDateTime | undefined {
+// Gets the closest future draw date for a recurrence of a given Lottery
+export function getNextDrawDate(lottery: Lottery): ZonedDateTime | undefined {
   // Do all arithmetic in UTC to ensure no DST or timezone messiness
   const startZdt = parseAbsolute(lottery.startAt, 'UTC');
   const { duration, repeatInterval } = lottery;
@@ -196,6 +197,11 @@ export function getDrawDate(lottery: Lottery): ZonedDateTime | undefined {
   return startZdt
     .add({ milliseconds: closestMultiple * repeatInterval })
     .add({ milliseconds: duration });
+}
+
+export function getFirstDrawDate(lottery: Lottery) {
+  const startZdt = parseAbsolute(lottery.startAt, 'UTC');
+  return drawDateFor(startZdt, lottery.duration);
 }
 
 function getMsDiff(a: ZonedDateTime, b: ZonedDateTime) {

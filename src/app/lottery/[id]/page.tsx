@@ -1,7 +1,7 @@
 import { LotteryView } from '@/app/lottery/[id]/lottery_view';
 import { getDraftLottery, getLottery } from '@/db/db';
 import { Lottery } from '@/db/schema';
-import { getDrawDate } from '@/lottery/lottery';
+import { getNextDrawDate } from '@/lottery/lottery';
 import React from 'react';
 
 export default function Page({ params }: { params: { id: string } }) {
@@ -26,7 +26,7 @@ export default function Page({ params }: { params: { id: string } }) {
 }
 
 function LotteryPage(props: { lottery: Lottery }) {
-  const nextDraw = getDrawDate(props.lottery);
+  const nextDraw = getNextDrawDate(props.lottery);
   return (
     <div>
       <h2 className="my-4">Lottery</h2>

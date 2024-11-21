@@ -3,7 +3,7 @@
 import { getLottery } from '@/db/db';
 import { saveLottery } from '@/db/db_actions';
 import { lotteryTypeLabels } from '@/db/schema';
-import { getDrawDate } from '@/lottery/lottery';
+import { getFirstDrawDate, getNextDrawDate } from '@/lottery/lottery';
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -36,8 +36,7 @@ export async function sendLotteryAnnouncement(id: string, editExistingMessage?: 
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const client = (globalThis as any).discordBot as Client | undefined;
-  const resultsDate = getDrawDate(lottery);
-  if (!resultsDate || !client) {
+  if (!client) {
     return;
   }
 
@@ -45,6 +44,8 @@ export async function sendLotteryAnnouncement(id: string, editExistingMessage?: 
   if (!channel || channel.type !== ChannelType.GuildText) {
     return;
   }
+  const drawDate = getNextDrawDate(lottery);
+  const isLotteryOpen = drawDate != null;
   const discordUser = await getDiscordUser(lottery.creator);
   const embed = new EmbedBuilder()
     .setTitle(lottery.title)
@@ -53,19 +54,27 @@ export async function sendLotteryAnnouncement(id: string, editExistingMessage?: 
     .addFields(
       { name: 'Type', value: lotteryTypeLabels[lottery.lotteryType], inline: true },
       { name: 'Prize', value: lottery.prize || '(none)', inline: true },
-      { name: 'Closes', value: `<t:${Math.floor(+resultsDate.toDate() / 1000)}:R>`, inline: true }
+      {
+        name: 'Closes',
+        value: drawDate
+          ? `<t:${Math.floor(+drawDate.toDate() / 1000)}:R>`
+          : `<t:${Math.floor(+getFirstDrawDate(lottery).toDate() / 1000)}:R>`,
+        inline: true,
+      }
     );
-
-  const enterLotteryButton = new ButtonBuilder()
-    .setLabel('Enter lottery')
-    .setStyle(ButtonStyle.Primary)
-    .setCustomId(`enter_${id}`);
 
   const messagePayload = {
     embeds: [embed],
-    components: [
-      new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(enterLotteryButton),
-    ],
+    components: isLotteryOpen
+      ? [
+          new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+            new ButtonBuilder()
+              .setLabel('Enter lottery')
+              .setStyle(ButtonStyle.Primary)
+              .setCustomId(`enter_${id}`)
+          ),
+        ]
+      : [],
   };
 
   if (editExistingMessage && lottery.announcementId) {

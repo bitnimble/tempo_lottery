@@ -1,7 +1,7 @@
 import { getDb } from '@/db/db';
 import { Lottery } from '@/db/schema';
 import { getDiscordUser } from '@/discord/discord_client_actions';
-import { getDrawDate } from '@/lottery/lottery';
+import { getNextDrawDate } from '@/lottery/lottery';
 import { Client } from 'discord.js';
 
 // TODO: fix data APIs and make them proper server actions / fetches so that Next can optimize
@@ -51,7 +51,7 @@ async function LotteryListItem(props: { lottery: Lottery }) {
             <br />
             Prize: {l.prize || 'None'}
             <br />
-            Ends: {getDrawDate(l)?.toString() || 'Already ended'}
+            Ends: {getNextDrawDate(l)?.toString() || 'Already ended'}
           </p>
         </div>
       </a>

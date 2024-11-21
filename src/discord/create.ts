@@ -2,7 +2,7 @@ import { Preconditions } from '@/app/base/preconditions';
 import { createDraftLottery, getLotteries, getLottery } from '@/db/db';
 import { Lottery } from '@/db/schema';
 import { CREATE_LOTTERY, ENTER_LOTTERY } from '@/discord/commands';
-import { getDrawDate, makeBids } from '@/lottery/lottery';
+import { getNextDrawDate, makeBids } from '@/lottery/lottery';
 import { now } from '@internationalized/date';
 import {
   ActionRowBuilder,
@@ -78,7 +78,7 @@ async function pickLotteryToEnter(interaction: ChatInputCommandInteraction) {
     .addOptions(
       getLotteries()
         .map((l) => {
-          const resultsDate = getDrawDate(l);
+          const resultsDate = getNextDrawDate(l);
           if (!resultsDate || +now('UTC').toDate() - +resultsDate.toDate() >= 0) {
             return;
           }
@@ -142,7 +142,7 @@ async function handleEnterLottery(
     return;
   }
 
-  const resultsDate = getDrawDate(lottery);
+  const resultsDate = getNextDrawDate(lottery);
   if (!resultsDate || +now('UTC').toDate() - +resultsDate.toDate() >= 0) {
     await interaction.reply({
       content: 'This lottery has closed.',
