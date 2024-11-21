@@ -4,7 +4,7 @@ import { Select } from '@/app/ui/select';
 import { Button as JollyButton } from '@/components/ui/button';
 import { JollyNumberField } from '@/components/ui/numberfield';
 import { JollyTextField } from '@/components/ui/textfield';
-import { saveLottery, tryPromoteLottery } from '@/db/db_actions';
+import { saveLottery, tryPublishLottery, tryUnpublishLottery } from '@/db/db_actions';
 import { Lottery, LotterySchema, LotteryType } from '@/db/schema';
 import { getDiscordUser } from '@/discord/discord_client_actions';
 import { getLocalTimeZone, parseAbsolute, ZonedDateTime } from '@internationalized/date';
@@ -15,6 +15,13 @@ import dynamic from 'next/dynamic';
 import React from 'react';
 import { Form, PressEvent } from 'react-aria-components';
 
+const enum LoadingState {
+  IDLE,
+  SAVING,
+  PUBLISHING,
+  UNPUBLISHING,
+}
+
 const DateRangePicker = dynamic(
   () => import('@/components/ui/date-picker').then((c) => c.JollyDateRangePicker<ZonedDateTime>),
   { ssr: false }
@@ -23,8 +30,7 @@ const DateRangePicker = dynamic(
 type Store = {
   lottery: Lottery;
   creator?: { name: string; iconURL: string | undefined };
-  isSaving: boolean;
-  isPublishing: boolean;
+  state: LoadingState;
   error: string | undefined;
 };
 
@@ -37,29 +43,43 @@ export const LotteryView = (props: { isDraft: boolean; lottery: Lottery }) => {
   const store = observable<Store>({
     lottery: props.lottery,
     creator: undefined,
-    isSaving: false,
-    isPublishing: false,
+    state: LoadingState.IDLE,
     error: undefined,
   });
 
   const onSave = async (e: PressEvent) => {
-    runInAction(() => (store.isSaving = true));
+    runInAction(() => (store.state = LoadingState.SAVING));
     await saveLottery(toJS(store.lottery));
-    runInAction(() => (store.isSaving = false));
+    runInAction(() => (store.state = LoadingState.IDLE));
   };
 
   const onPublish = async (e: PressEvent) => {
-    runInAction(() => (store.isPublishing = true));
+    runInAction(() => (store.state = LoadingState.PUBLISHING));
     try {
       await saveLottery(toJS(store.lottery), true);
-      await tryPromoteLottery(store.lottery.id);
+      await tryPublishLottery(store.lottery.id);
     } catch (e: any) {
       runInAction(() => {
-        store.isPublishing = false;
+        store.state = LoadingState.IDLE;
         store.error = e.toString();
       });
     }
     // Redirect to new promoted lottery page
+    window.location.reload();
+  };
+
+  const onUnpublish = async (e: PressEvent) => {
+    runInAction(() => (store.state = LoadingState.UNPUBLISHING));
+    try {
+      await saveLottery(toJS(store.lottery), true);
+      await tryUnpublishLottery(store.lottery.id);
+    } catch (e: any) {
+      runInAction(() => {
+        store.state = LoadingState.IDLE;
+        store.error = e.toString();
+      });
+    }
+    // Redirect to new draft lottery page
     window.location.reload();
   };
 
@@ -72,7 +92,13 @@ export const LotteryView = (props: { isDraft: boolean; lottery: Lottery }) => {
   }, [props.lottery]);
 
   return (
-    <_LotteryView isDraft={props.isDraft} store={store} onSave={onSave} onPublish={onPublish} />
+    <_LotteryView
+      isDraft={props.isDraft}
+      store={store}
+      onSave={onSave}
+      onPublish={onPublish}
+      onUnpublish={onUnpublish}
+    />
   );
 };
 
@@ -82,9 +108,10 @@ const _LotteryView = mobxReact.observer(
     store: Store;
     onSave: (e: PressEvent) => Promise<void>;
     onPublish: (e: PressEvent) => Promise<void>;
+    onUnpublish: (e: PressEvent) => Promise<void>;
   }) => {
     const l = props.store.lottery;
-    const isSubmitting = props.store.isSaving || props.store.isPublishing;
+    const isSubmitting = props.store.state !== LoadingState.IDLE;
 
     return (
       <Form className="flex flex-col gap-4">
@@ -190,13 +217,24 @@ const _LotteryView = mobxReact.observer(
         <div className="flex gap-2">
           <JollyButton isDisabled={isSubmitting} onPress={props.onSave}>
             Save
-            {props.store.isSaving && <Loader2 className="ml-2 size-4 animate-spin" />}
+            {props.store.state === LoadingState.SAVING && (
+              <Loader2 className="ml-2 size-4 animate-spin" />
+            )}
           </JollyButton>
 
-          {props.isDraft && (
+          {props.isDraft ? (
             <JollyButton isDisabled={isSubmitting} variant="secondary" onPress={props.onPublish}>
               Publish
-              {props.store.isPublishing && <Loader2 className="ml-2 size-4 animate-spin" />}
+              {props.store.state === LoadingState.PUBLISHING && (
+                <Loader2 className="ml-2 size-4 animate-spin" />
+              )}
+            </JollyButton>
+          ) : (
+            <JollyButton isDisabled={isSubmitting} variant="secondary" onPress={props.onUnpublish}>
+              Unpublish
+              {props.store.state === LoadingState.UNPUBLISHING && (
+                <Loader2 className="ml-2 size-4 animate-spin" />
+              )}
             </JollyButton>
           )}
         </div>

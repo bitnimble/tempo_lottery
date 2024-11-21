@@ -166,18 +166,9 @@ async function createLotteryAnnounceJob(lottery: Lottery, drawDate: ZonedDateTim
 }
 
 export async function updateLotterySchedule(lottery: Lottery) {
-  // Delete old ones
+  // Delete old scheduled jobs
   const drawJob = schedule.scheduledJobs[lottery.id];
   const lotteryAnnounceJob = schedule.scheduledJobs[lottery.id + '_announce'];
-
-  const drawDate = getDrawDate(lottery);
-  if (!drawDate) {
-    console.log(
-      `Attempted to update schedule for lottery "${lottery.title}" (${lottery.id}), but it was a once-off lottery and has expired.`
-    );
-    return;
-  }
-
   if (drawJob) {
     console.log('Deleting old draw job for lottery ' + lottery.id);
     drawJob.cancel();
@@ -187,7 +178,19 @@ export async function updateLotterySchedule(lottery: Lottery) {
     lotteryAnnounceJob.cancel();
   }
 
-  // Create new ones
+  // Only published / non-draft lotteries get scheduled
+  if (getLottery(lottery.id) == null) {
+    return;
+  }
+
+  // Create new scheduled jobs
+  const drawDate = getDrawDate(lottery);
+  if (!drawDate) {
+    console.log(
+      `Attempted to update schedule for lottery "${lottery.title}" (${lottery.id}), but it was a once-off lottery and has expired.`
+    );
+    return;
+  }
   createLotteryDrawJob(lottery, drawDate);
   if (!lottery.isAnnounced) {
     await createLotteryAnnounceJob(lottery, drawDate);

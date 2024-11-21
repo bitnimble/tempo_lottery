@@ -26,16 +26,31 @@ export async function saveLottery(lottery: Lottery, skipScheduleUpdate?: boolean
   saveDb();
 }
 
-export async function tryPromoteLottery(draftId: string) {
+export async function tryPublishLottery(draftId: string) {
   const db = getDb();
-  const draft = db.drafts.findIndex((l) => l.id === draftId);
-  if (draft < 0) {
+  const draftIndex = db.drafts.findIndex((l) => l.id === draftId);
+  if (draftIndex < 0) {
     throw new Error('Could not find matching draft ID: ' + draftId);
   }
 
-  const lottery = LotterySchema.parse(db.drafts[draft]);
-  db.drafts.splice(draft, 1);
+  const lottery = LotterySchema.parse(db.drafts[draftIndex]);
+  db.drafts.splice(draftIndex, 1);
   db.lotteries.push(lottery);
+
+  saveDb();
+  await updateLotterySchedule(lottery);
+}
+
+export async function tryUnpublishLottery(id: string) {
+  const db = getDb();
+  const lotteryIndex = db.lotteries.findIndex((l) => l.id === id);
+  if (lotteryIndex < 0) {
+    throw new Error('Could not find matching lottery ID: ' + id);
+  }
+
+  const lottery = LotterySchema.parse(db.lotteries[lotteryIndex]);
+  db.lotteries.splice(lotteryIndex, 1);
+  db.drafts.push(lottery);
 
   saveDb();
   await updateLotterySchedule(lottery);
