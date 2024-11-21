@@ -29,7 +29,7 @@ export function makeBid(lottery: Lottery, user: string, bid: number): BidResult 
   return BidResult.SUCCESS;
 }
 
-async function processLotteryResults(lottery: Lottery) {
+async function processLotteryResults(id: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const client = (globalThis as any).discordBot as Client | undefined;
   if (!client) {
@@ -37,6 +37,11 @@ async function processLotteryResults(lottery: Lottery) {
     return;
   }
 
+  const lottery = getLottery(id);
+  if (!lottery) {
+    console.error(`Attempted to draw lottery for ${id} but it did not exist`);
+    return;
+  }
   if (lottery.bids.length === 0) {
     console.log(`Lottery ${lottery.id} had no bids`);
     client.channels.fetch(lottery.channel).then((c) => {
@@ -152,7 +157,7 @@ async function sendLotteryOpenEmbed(id: string) {
 function createLotteryDrawJob(lottery: Lottery, drawDate: ZonedDateTime) {
   console.log('Updating lottery schedule for ' + lottery.id);
   console.log('Creating new job for ' + lottery.id);
-  schedule.scheduleJob(lottery.id, drawDate.toDate(), () => processLotteryResults(lottery));
+  schedule.scheduleJob(lottery.id, drawDate.toDate(), () => processLotteryResults(lottery.id));
 }
 
 async function createLotteryAnnounceJob(lottery: Lottery, drawDate: ZonedDateTime) {
