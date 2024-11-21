@@ -31,7 +31,12 @@ const enum LoadingState {
 
 const DateRangePicker = dynamic(
   () => import('@/components/ui/date-picker').then((c) => c.JollyDateRangePicker<ZonedDateTime>),
-  { ssr: false }
+  {
+    ssr: false,
+    loading: () => (
+      <JollyTextField className="flex-1 bg-grey" label="Start and end date" isReadOnly />
+    ),
+  }
 );
 
 type Store = {
