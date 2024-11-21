@@ -2,6 +2,7 @@
 
 import { Select } from '@/app/ui/select';
 import { Button as JollyButton } from '@/components/ui/button';
+import { DialogContent, DialogHeader, DialogOverlay, DialogTrigger } from '@/components/ui/modal';
 import { JollyNumberField } from '@/components/ui/numberfield';
 import { JollyTextField } from '@/components/ui/textfield';
 import {
@@ -261,12 +262,35 @@ const _LotteryView = mobxReact.observer(
           )}
         </div>
         <div className="flex gap-2 my-4">
-          <JollyButton isDisabled={isSubmitting} variant="destructive" onPress={props.onDelete}>
-            🗑️ Delete
-            {props.store.state === LoadingState.DELETING && (
-              <Loader2 className="ml-2 size-4 animate-spin" />
-            )}
-          </JollyButton>
+          <DialogTrigger>
+            <JollyButton isDisabled={isSubmitting} variant="destructive">
+              🗑️ Delete
+            </JollyButton>
+            <DialogOverlay>
+              <DialogContent>
+                {({ close }) => (
+                  <>
+                    <DialogHeader>Are you sure?</DialogHeader>
+                    <div className="flex gap-2">
+                      <JollyButton
+                        isDisabled={isSubmitting}
+                        variant="destructive"
+                        onPress={props.onDelete}
+                      >
+                        Yes, delete
+                        {props.store.state === LoadingState.DELETING && (
+                          <Loader2 className="ml-2 size-4 animate-spin" />
+                        )}
+                      </JollyButton>
+                      <JollyButton isDisabled={isSubmitting} onPress={close}>
+                        Cancel
+                      </JollyButton>
+                    </div>
+                  </>
+                )}
+              </DialogContent>
+            </DialogOverlay>
+          </DialogTrigger>
         </div>
       </Form>
     );
