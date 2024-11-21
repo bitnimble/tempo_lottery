@@ -65,7 +65,7 @@ async function handleCreateLottery(interaction: ChatInputCommandInteraction) {
   console.log(`Created lottery "${name}" (${id})`);
 
   await interaction.reply({
-    content: `http://${process.env.HOST}/lottery/${id}`,
+    content: `Created draft lottery "${name}": http://${process.env.HOST}/lottery/${id}. This lottery still needs to be published to become active.`,
     ephemeral: true,
   });
 }
