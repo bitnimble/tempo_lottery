@@ -13,6 +13,7 @@ const Db = z.object({
 reloadDb();
 
 export function getDb() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (globalThis as any).lotteryDb as z.infer<typeof Db>;
 }
 
@@ -42,6 +43,7 @@ export function saveDb() {
 }
 
 export function reloadDb() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (globalThis as any).lotteryDb = loadDbFromDisk();
 }
 

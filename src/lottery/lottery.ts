@@ -30,6 +30,7 @@ export function makeBid(lottery: Lottery, user: string, bid: number): BidResult 
 }
 
 async function processLotteryResults(lottery: Lottery) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const client = (globalThis as any).discordBot as Client | undefined;
   if (!client) {
     console.error('Attempted to process lottery results, but the Discord bot was not active');
@@ -124,6 +125,7 @@ async function sendLotteryOpenEmbed(id: string) {
     throw new Error('Tried to send lottery open message but it did not exist in the DB: ' + id);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const client = (globalThis as any).discordBot as Client | undefined;
   const resultsDate = getDrawDate(lottery);
   if (!resultsDate || !client) {

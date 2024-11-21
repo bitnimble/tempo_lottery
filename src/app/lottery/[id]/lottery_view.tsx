@@ -38,7 +38,7 @@ type Store = {
   lottery: Lottery;
   creator?: { name: string; iconURL: string | undefined };
   state: LoadingState;
-  error: string | undefined;
+  error: unknown | undefined;
 };
 
 const lotteryTypeLabels: Record<LotteryType, string> = {
@@ -54,50 +54,50 @@ export const LotteryView = (props: { isDraft: boolean; lottery: Lottery }) => {
     error: undefined,
   });
 
-  const onSave = async (e: PressEvent) => {
+  const onSave = async () => {
     runInAction(() => (store.state = LoadingState.SAVING));
     await saveLottery(toJS(store.lottery));
     runInAction(() => (store.state = LoadingState.IDLE));
   };
 
-  const onPublish = async (e: PressEvent) => {
+  const onPublish = async () => {
     runInAction(() => (store.state = LoadingState.PUBLISHING));
     try {
       await saveLottery(toJS(store.lottery), true);
       await tryPublishLottery(store.lottery.id);
-    } catch (e: any) {
+    } catch (e) {
       runInAction(() => {
         store.state = LoadingState.IDLE;
-        store.error = e.toString();
+        store.error = e;
       });
     }
     // Redirect to new promoted lottery page
     window.location.reload();
   };
 
-  const onUnpublish = async (e: PressEvent) => {
+  const onUnpublish = async () => {
     runInAction(() => (store.state = LoadingState.UNPUBLISHING));
     try {
       await saveLottery(toJS(store.lottery), true);
       await tryUnpublishLottery(store.lottery.id);
-    } catch (e: any) {
+    } catch (e) {
       runInAction(() => {
         store.state = LoadingState.IDLE;
-        store.error = e.toString();
+        store.error = e;
       });
     }
     // Redirect to new draft lottery page
     window.location.reload();
   };
 
-  const onDelete = async (e: PressEvent) => {
+  const onDelete = async () => {
     runInAction(() => (store.state = LoadingState.DELETING));
     try {
       await tryDeleteLottery(store.lottery.id);
-    } catch (e: any) {
+    } catch (e) {
       runInAction(() => {
         store.state = LoadingState.IDLE;
-        store.error = e.toString();
+        store.error = e;
       });
     }
     // Redirect to new draft lottery page
@@ -110,7 +110,7 @@ export const LotteryView = (props: { isDraft: boolean; lottery: Lottery }) => {
         runInAction(() => (store.creator = u));
       }
     });
-  }, [props.lottery]);
+  });
 
   return (
     <_LotteryView
@@ -231,9 +231,10 @@ const _LotteryView = mobxReact.observer(
           />
         </div>
 
-        {props.store.error && (
+        {props.store.error != null && (
           <div className="w-full bg-red-600 rounded-md text-white my-4 p-4">
-            {props.store.error}
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {props.store.error as any}
           </div>
         )}
 

@@ -1,6 +1,7 @@
 import { CREATE_LOTTERY, ENTER_LOTTERY } from '@/discord/commands';
-import fetch, { RequestInit } from 'node-fetch';
+import { RESTPutAPIApplicationCommandsJSONBody } from 'discord.js';
 import 'dotenv/config';
+import fetch, { RequestInit } from 'node-fetch';
 
 const appId = process.env.APP_ID;
 if (!appId) {
@@ -10,8 +11,6 @@ if (!appId) {
 async function makeDiscordRequest(endpoint: string, options: Partial<RequestInit>) {
   // append endpoint to root API URL
   const url = 'https://discord.com/api/v10/' + endpoint;
-  // Stringify payloads
-  if (options.body) options.body = JSON.stringify(options.body);
   // Use fetch to make requests
   const res = await fetch(url, {
     headers: {
@@ -31,15 +30,21 @@ async function makeDiscordRequest(endpoint: string, options: Partial<RequestInit
   return res;
 }
 
-export async function installGlobalCommands(appId: string, commands: any) {
+export async function installGlobalCommands(
+  appId: string,
+  commands: RESTPutAPIApplicationCommandsJSONBody
+) {
   // API endpoint to overwrite global commands
   const endpoint = `applications/${appId}/commands`;
 
   try {
     // This is calling the bulk overwrite endpoint: https://discord.com/developers/docs/interactions/application-commands#bulk-overwrite-global-application-commands
-    const res = await makeDiscordRequest(endpoint, { method: 'PUT', body: commands });
+    const res = await makeDiscordRequest(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(commands),
+    });
     console.log(res.status);
-    res.json().then((r: any) => console.log(r));
+    res.json().then((r) => console.log(r));
   } catch (err) {
     console.error(err);
   }

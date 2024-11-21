@@ -5,6 +5,7 @@ import { getDrawDate } from '@/lottery/lottery';
 import { Client } from 'discord.js';
 
 export default async function Page() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const client = (globalThis as any).discordBot as Client | undefined;
   if (!client) {
     return 'Waiting for Discord bot to start... refresh in 10 seconds.';
@@ -17,7 +18,7 @@ export default async function Page() {
       <ul className="p-0 m-0">
         {lotteries.length === 0 && 'None'}
         {lotteries.map((l) => (
-          <LotteryListItem lottery={l} />
+          <LotteryListItem key={l.id} lottery={l} />
         ))}
       </ul>
 
@@ -25,7 +26,7 @@ export default async function Page() {
       <ul className="p-0 m-0">
         {drafts.length === 0 && 'None'}
         {drafts.map((l) => (
-          <LotteryListItem lottery={l} />
+          <LotteryListItem key={l.id} lottery={l} />
         ))}
       </ul>
     </div>
@@ -36,7 +37,7 @@ async function LotteryListItem(props: { lottery: Lottery }) {
   const l = props.lottery;
   const creator = await getDiscordUser(l.creator);
   return (
-    <li key={l.id} className="p-0 list-none">
+    <li className="p-0 list-none">
       {/* TODO: use a Next link for prefetching on hover, but need to also add a loading spinner somewhere then */}
       <a href={`/lottery/${l.id}`} className="no-underline">
         <div className="rounded-md border border-input hover:border-black px-4 py-2 transition">

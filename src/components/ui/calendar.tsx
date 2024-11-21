@@ -1,8 +1,8 @@
 'use client';
 
-import * as React from 'react';
 import { getLocalTimeZone, today } from '@internationalized/date';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import * as React from 'react';
 import {
   Button as AriaButton,
   Calendar as AriaCalendar,
@@ -27,15 +27,15 @@ import {
   useLocale,
 } from 'react-aria-components';
 
-import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 const Calendar = AriaCalendar;
 
 const RangeCalendar = AriaRangeCalendar;
 
 const CalendarHeading = (props: React.HTMLAttributes<HTMLElement>) => {
-  let { direction } = useLocale();
+  const { direction } = useLocale();
 
   return (
     <header className="flex w-full items-center gap-1 px-1 pb-4" {...props}>
@@ -207,8 +207,8 @@ export {
   CalendarGridHeader,
   CalendarHeaderCell,
   CalendarHeading,
-  RangeCalendar,
   JollyCalendar,
   JollyRangeCalendar,
+  RangeCalendar,
 };
 export type { JollyCalendarProps, JollyRangeCalendarProps };
