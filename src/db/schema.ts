@@ -5,6 +5,11 @@ export const enum LotteryType {
   LOWEST_UNIQUE_NUMBER = 'LOWEST_UNIQUE_NUMBER',
 }
 
+export const lotteryTypeLabels: Record<LotteryType, string> = {
+  [LotteryType.SIMPLE]: 'Simple',
+  [LotteryType.LOWEST_UNIQUE_NUMBER]: 'Lowest unique number',
+};
+
 export const BidSchema = z.object({
   id: z.string().uuid(),
   user: z.string({ description: 'Discord ID of the user who placed this bid' }),

@@ -11,7 +11,7 @@ import {
   tryPublishLottery,
   tryUnpublishLottery,
 } from '@/db/db_actions';
-import { Lottery, LotterySchema, LotteryType } from '@/db/schema';
+import { Lottery, LotterySchema, LotteryType, lotteryTypeLabels } from '@/db/schema';
 import { getDiscordUser } from '@/discord/discord_client_actions';
 import { getLocalTimeZone, parseAbsolute, ZonedDateTime } from '@internationalized/date';
 import { Loader2 } from 'lucide-react';
@@ -44,11 +44,6 @@ type Store = {
   creator?: { name: string; iconURL: string | undefined };
   state: LoadingState;
   error: unknown | undefined;
-};
-
-const lotteryTypeLabels: Record<LotteryType, string> = {
-  [LotteryType.SIMPLE]: 'Simple',
-  [LotteryType.LOWEST_UNIQUE_NUMBER]: 'Lowest unique number',
 };
 
 export const LotteryView = (props: { isDraft: boolean; lottery: Lottery }) => {
