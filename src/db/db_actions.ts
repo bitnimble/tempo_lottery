@@ -1,7 +1,7 @@
 'use server';
 
 import { getDb, saveDb } from '@/db/db';
-import { Lottery, LotterySchema } from '@/db/schema';
+import { Bid, Lottery, LotterySchema } from '@/db/schema';
 import { updateLotterySchedule } from '@/lottery/lottery';
 
 export async function saveLottery(lottery: Lottery, skipScheduleUpdate?: boolean) {
@@ -9,7 +9,17 @@ export async function saveLottery(lottery: Lottery, skipScheduleUpdate?: boolean
 
   const existing = db.lotteries.findIndex((l) => l.id === lottery.id);
   if (existing >= 0) {
-    db.lotteries.splice(existing, 1, LotterySchema.parse(lottery));
+    // Get latest bids and ensure we don't wipe it
+    // TODO: just store bids in a separate part of the db, this can potentially race
+    const bids = db.lotteries[existing].bids;
+    db.lotteries.splice(
+      existing,
+      1,
+      LotterySchema.parse({
+        ...lottery,
+        bids,
+      })
+    );
     saveDb();
 
     if (skipScheduleUpdate !== true) {
@@ -21,6 +31,24 @@ export async function saveLottery(lottery: Lottery, skipScheduleUpdate?: boolean
   const existingDraft = db.drafts.findIndex((l) => l.id === lottery.id);
   if (existingDraft >= 0) {
     db.drafts.splice(existingDraft, 1, LotterySchema.parse(lottery));
+    saveDb();
+  }
+}
+
+export async function saveLotteryBids(id: string, bids: Bid[]) {
+  const db = getDb();
+
+  const existing = db.lotteries.findIndex((l) => l.id === id);
+  if (existing >= 0) {
+    const lottery = db.lotteries[existing];
+    db.lotteries.splice(
+      existing,
+      1,
+      LotterySchema.parse({
+        ...lottery,
+        bids,
+      })
+    );
     saveDb();
   }
 }

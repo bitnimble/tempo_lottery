@@ -1,5 +1,5 @@
 import { getLotteries, getLottery } from '@/db/db';
-import { saveLottery } from '@/db/db_actions';
+import { saveLotteryBids } from '@/db/db_actions';
 import { Bid, Lottery, LotteryType } from '@/db/schema';
 import { sendLotteryAnnouncement } from '@/discord/discord_client_actions';
 import { now, parseAbsolute, ZonedDateTime } from '@internationalized/date';
@@ -23,7 +23,7 @@ export function makeBids(lottery: Lottery, user: string, bids: number[]): number
     });
   }
 
-  saveLottery(lottery, true);
+  saveLotteryBids(lottery.id, lottery.bids);
 
   return validBids.length;
 }
