@@ -4,7 +4,12 @@ import { Select } from '@/app/ui/select';
 import { Button as JollyButton } from '@/components/ui/button';
 import { JollyNumberField } from '@/components/ui/numberfield';
 import { JollyTextField } from '@/components/ui/textfield';
-import { saveLottery, tryPublishLottery, tryUnpublishLottery } from '@/db/db_actions';
+import {
+  saveLottery,
+  tryDeleteLottery,
+  tryPublishLottery,
+  tryUnpublishLottery,
+} from '@/db/db_actions';
 import { Lottery, LotterySchema, LotteryType } from '@/db/schema';
 import { getDiscordUser } from '@/discord/discord_client_actions';
 import { getLocalTimeZone, parseAbsolute, ZonedDateTime } from '@internationalized/date';
@@ -20,6 +25,7 @@ const enum LoadingState {
   SAVING,
   PUBLISHING,
   UNPUBLISHING,
+  DELETING,
 }
 
 const DateRangePicker = dynamic(
@@ -83,6 +89,20 @@ export const LotteryView = (props: { isDraft: boolean; lottery: Lottery }) => {
     window.location.reload();
   };
 
+  const onDelete = async (e: PressEvent) => {
+    runInAction(() => (store.state = LoadingState.DELETING));
+    try {
+      await tryDeleteLottery(store.lottery.id);
+    } catch (e: any) {
+      runInAction(() => {
+        store.state = LoadingState.IDLE;
+        store.error = e.toString();
+      });
+    }
+    // Redirect to new draft lottery page
+    window.location.href = '/lottery';
+  };
+
   React.useEffect(() => {
     getDiscordUser(props.lottery.creator).then((u) => {
       if (u) {
@@ -98,6 +118,7 @@ export const LotteryView = (props: { isDraft: boolean; lottery: Lottery }) => {
       onSave={onSave}
       onPublish={onPublish}
       onUnpublish={onUnpublish}
+      onDelete={onDelete}
     />
   );
 };
@@ -109,6 +130,7 @@ const _LotteryView = mobxReact.observer(
     onSave: (e: PressEvent) => Promise<void>;
     onPublish: (e: PressEvent) => Promise<void>;
     onUnpublish: (e: PressEvent) => Promise<void>;
+    onDelete: (e: PressEvent) => Promise<void>;
   }) => {
     const l = props.store.lottery;
     const isSubmitting = props.store.state !== LoadingState.IDLE;
@@ -216,7 +238,7 @@ const _LotteryView = mobxReact.observer(
 
         <div className="flex gap-2">
           <JollyButton isDisabled={isSubmitting} onPress={props.onSave}>
-            Save
+            💾 Save
             {props.store.state === LoadingState.SAVING && (
               <Loader2 className="ml-2 size-4 animate-spin" />
             )}
@@ -224,19 +246,27 @@ const _LotteryView = mobxReact.observer(
 
           {props.isDraft ? (
             <JollyButton isDisabled={isSubmitting} variant="secondary" onPress={props.onPublish}>
-              Publish
+              ✅ Publish
               {props.store.state === LoadingState.PUBLISHING && (
                 <Loader2 className="ml-2 size-4 animate-spin" />
               )}
             </JollyButton>
           ) : (
             <JollyButton isDisabled={isSubmitting} variant="secondary" onPress={props.onUnpublish}>
-              Unpublish
+              🚫 Unpublish
               {props.store.state === LoadingState.UNPUBLISHING && (
                 <Loader2 className="ml-2 size-4 animate-spin" />
               )}
             </JollyButton>
           )}
+        </div>
+        <div className="flex gap-2 my-4">
+          <JollyButton isDisabled={isSubmitting} variant="destructive" onPress={props.onDelete}>
+            🗑️ Delete
+            {props.store.state === LoadingState.DELETING && (
+              <Loader2 className="ml-2 size-4 animate-spin" />
+            )}
+          </JollyButton>
         </div>
       </Form>
     );

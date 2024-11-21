@@ -21,9 +21,8 @@ export async function saveLottery(lottery: Lottery, skipScheduleUpdate?: boolean
   const existingDraft = db.drafts.findIndex((l) => l.id === lottery.id);
   if (existingDraft >= 0) {
     db.drafts.splice(existingDraft, 1, LotterySchema.parse(lottery));
+    saveDb();
   }
-
-  saveDb();
 }
 
 export async function tryPublishLottery(draftId: string) {
@@ -54,4 +53,21 @@ export async function tryUnpublishLottery(id: string) {
 
   saveDb();
   await updateLotterySchedule(lottery);
+}
+
+export async function tryDeleteLottery(id: string) {
+  const db = getDb();
+  const existing = db.lotteries.findIndex((l) => l.id === id);
+  if (existing >= 0) {
+    const [lottery] = db.lotteries.splice(existing, 1);
+    saveDb();
+    await updateLotterySchedule(lottery);
+    return;
+  }
+
+  const existingDraft = db.drafts.findIndex((l) => l.id === id);
+  if (existingDraft >= 0) {
+    db.drafts.splice(existingDraft, 1);
+    saveDb();
+  }
 }
