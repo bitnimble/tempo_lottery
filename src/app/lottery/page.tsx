@@ -4,6 +4,10 @@ import { getDiscordUser } from '@/discord/discord_client_actions';
 import { getDrawDate } from '@/lottery/lottery';
 import { Client } from 'discord.js';
 
+// TODO: fix data APIs and make them proper server actions / fetches so that Next can optimize
+// prerendering correctly.
+export const dynamic = 'force-dynamic';
+
 export default async function Page() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const client = (globalThis as any).discordBot as Client | undefined;
