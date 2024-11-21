@@ -1,0 +1,9 @@
+apps:
+  - name: "tempo_lottery"
+    script: "yarn start"
+    max_restarts: 3
+    restart_delay: 10000
+    min_uptime: 15000
+    log_date_format: "YYYY-MM-DD HH:mm Z"
+    env:
+      NODE_ENV: production
