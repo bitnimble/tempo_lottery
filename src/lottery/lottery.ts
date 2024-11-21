@@ -1,7 +1,7 @@
 import { getLotteries, getLottery } from '@/db/db';
 import { saveLottery } from '@/db/db_actions';
 import { Bid, Lottery, LotteryType } from '@/db/schema';
-import { sendLotteryOpenEmbed } from '@/discord/discord_client_actions';
+import { sendLotteryAnnouncement } from '@/discord/discord_client_actions';
 import { now, parseAbsolute, ZonedDateTime } from '@internationalized/date';
 import { randomUUID } from 'crypto';
 import { ChannelType, Client } from 'discord.js';
@@ -132,11 +132,11 @@ async function createLotteryAnnounceJob(lottery: Lottery, drawDate: ZonedDateTim
   const startDate = drawDate.add({ milliseconds: -1 * lottery.duration });
   if (getMsDiff(now('UTC'), startDate) < 0) {
     schedule.scheduleJob(lottery.id + '_announce', startDate.toDate(), () =>
-      sendLotteryOpenEmbed(lottery.id)
+      sendLotteryAnnouncement(lottery.id)
     );
   } else {
     // Start date was in the past, so just send the message instantly
-    await sendLotteryOpenEmbed(lottery.id);
+    await sendLotteryAnnouncement(lottery.id);
   }
 }
 

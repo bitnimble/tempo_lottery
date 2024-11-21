@@ -4,7 +4,15 @@ import { getLottery } from '@/db/db';
 import { saveLottery } from '@/db/db_actions';
 import { lotteryTypeLabels } from '@/db/schema';
 import { getDrawDate } from '@/lottery/lottery';
-import { ChannelType, Client, EmbedBuilder } from 'discord.js';
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ChannelType,
+  Client,
+  EmbedBuilder,
+  MessageActionRowComponentBuilder,
+} from 'discord.js';
 
 export async function getDiscordUser(id: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -20,7 +28,7 @@ export async function getDiscordUser(id: string) {
 }
 
 // Take ID instead of Lottery so that we don't capture the lottery metadata at the time of scheduling
-export async function sendLotteryOpenEmbed(id: string, editExistingMessage?: boolean) {
+export async function sendLotteryAnnouncement(id: string, editExistingMessage?: boolean) {
   const lottery = getLottery(id);
   if (!lottery) {
     throw new Error('Tried to send lottery open message but it did not exist in the DB: ' + id);
@@ -48,10 +56,22 @@ export async function sendLotteryOpenEmbed(id: string, editExistingMessage?: boo
       { name: 'Closes', value: `<t:${Math.floor(+resultsDate.toDate() / 1000)}:R>`, inline: true }
     );
 
+  const enterLotteryButton = new ButtonBuilder()
+    .setLabel('Enter lottery')
+    .setStyle(ButtonStyle.Primary)
+    .setCustomId(`enter_${id}`);
+
+  const messagePayload = {
+    embeds: [embed],
+    components: [
+      new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(enterLotteryButton),
+    ],
+  };
+
   if (editExistingMessage && lottery.announcementId) {
-    await channel.messages.edit(lottery.announcementId, { embeds: [embed] });
+    await channel.messages.edit(lottery.announcementId, messagePayload);
   } else {
-    const message = await channel.send({ embeds: [embed] });
+    const message = await channel.send(messagePayload);
     await saveLottery({ ...lottery, announcementId: message.id }, true);
   }
 }

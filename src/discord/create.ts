@@ -70,7 +70,7 @@ async function handleCreateLottery(interaction: ChatInputCommandInteraction) {
   });
 }
 
-async function handleEnterLottery(interaction: ChatInputCommandInteraction) {
+async function pickLotteryToEnter(interaction: ChatInputCommandInteraction) {
   // Create select dropdown with active lotteries to pick from
   const lotteryOptions = new StringSelectMenuBuilder()
     .setCustomId('lottery_id')
@@ -117,40 +117,10 @@ async function handleEnterLottery(interaction: ChatInputCommandInteraction) {
       return;
     }
     const selectedLotteryId = confirmation.values[0];
-    const lottery = getLottery(selectedLotteryId);
-    if (!lottery) {
-      await interaction.editReply('The selected lottery is no longer available. Please try again.');
-      return;
-    }
-    if (
-      lottery.bids.filter((b) => b.user === interaction.user.id).length >= lottery.maxBidsPerUser
-    ) {
-      await interaction.editReply({
-        content: `You have already bid the maximum number of times on this lottery (${lottery.maxBidsPerUser}).`,
-      });
-      return;
-    }
-
-    const bidsResult = await collectBidsForLottery(interaction, confirmation, lottery);
-    if (bidsResult == null) {
-      return;
-    }
-    const [modalConfirmation, bids] = bidsResult;
-    const successfulBids = await makeBids(lottery, interaction.user.id, bids);
-    if (successfulBids < bids.length) {
-      await modalConfirmation.reply({
-        content: `You hit the maximum number of bids (${
-          lottery.maxBidsPerUser
-        }). Your first ${successfulBids} bid(s) were successfully entered: \`${bids.join(', ')}\`.`,
-        ephemeral: true,
-      });
-    } else {
-      await modalConfirmation.reply({
-        content: `You have bid \`${bids.join(', ')}\` on "${lottery.title}"!`,
-        ephemeral: true,
-      });
-    }
-    await interaction.deleteReply();
+    return {
+      interaction: confirmation,
+      lottery: getLottery(selectedLotteryId),
+    };
   } catch (e) {
     console.log(e);
     await interaction.editReply({
@@ -160,11 +130,52 @@ async function handleEnterLottery(interaction: ChatInputCommandInteraction) {
   }
 }
 
+async function handleEnterLottery(
+  interaction: ChatInputCommandInteraction | MessageComponentInteraction,
+  lottery: Lottery
+) {
+  if (lottery.bids.filter((b) => b.user === interaction.user.id).length >= lottery.maxBidsPerUser) {
+    await interaction.reply({
+      content: `You have already bid the maximum number of times on this lottery (${lottery.maxBidsPerUser}).`,
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const resultsDate = getDrawDate(lottery);
+  if (!resultsDate || +now('UTC').toDate() - +resultsDate.toDate() >= 0) {
+    await interaction.reply({
+      content: 'This lottery has closed.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const bidsResult = await collectBidsForLottery(interaction, lottery);
+  if (bidsResult == null) {
+    return;
+  }
+  const [modalConfirmation, bids] = bidsResult;
+  const successfulBids = await makeBids(lottery, interaction.user.id, bids);
+  if (successfulBids < bids.length) {
+    await modalConfirmation.reply({
+      content: `You hit the maximum number of bids (${
+        lottery.maxBidsPerUser
+      }). Your first ${successfulBids} bid(s) were successfully entered: \`${bids.join(', ')}\`.`,
+      ephemeral: true,
+    });
+  } else {
+    await modalConfirmation.reply({
+      content: `You have bid \`${bids.join(', ')}\` on "${lottery.title}"!`,
+      ephemeral: true,
+    });
+  }
+}
+
 // Pull this out into its own function, so that if Discord allows us to do chained modals in the
 // future, we can easily chain more (e.g. retry on validation failure)
 async function collectBidsForLottery(
-  originalInteraction: ChatInputCommandInteraction,
-  interaction: MessageComponentInteraction,
+  interaction: ChatInputCommandInteraction | MessageComponentInteraction,
   lottery: Lottery
 ) {
   await interaction.showModal({
@@ -186,18 +197,19 @@ async function collectBidsForLottery(
   });
   const bids = modalConfirmation.components
     .map((c) => c.components[0].value)
-    .filter((v) => v.trim() !== '')
-    .map(Number);
+    .filter((v) => v.trim() !== '');
   for (const bid of bids) {
-    if (isNaN(bid) || bid < lottery.minimumBid || bid > lottery.maximumBid) {
-      await originalInteraction.editReply(
-        `Invalid bid entered ("${bid}") - please make sure it is a valid number in the possible bid range.`
-      );
+    const bidNumber = Number(bid);
+    if (isNaN(bidNumber) || bidNumber < lottery.minimumBid || bidNumber > lottery.maximumBid) {
+      await modalConfirmation.reply({
+        content: `Invalid bid entered ("${bid}") - please make sure it is a valid number in the possible bid range.`,
+        ephemeral: true,
+      });
       return;
     }
   }
 
-  return [modalConfirmation, bids] as const;
+  return [modalConfirmation, bids.map(Number)] as const;
 }
 
 export function createDiscordBot() {
@@ -211,13 +223,37 @@ export function createDiscordBot() {
   });
   client.on(Events.InteractionCreate, async (interaction) => {
     try {
-      if (!interaction.isChatInputCommand()) {
-        return;
-      }
-      if (interaction.commandName === CREATE_LOTTERY.name) {
-        await handleCreateLottery(interaction);
-      } else if (interaction.commandName === ENTER_LOTTERY.name) {
-        await handleEnterLottery(interaction);
+      if (interaction.isMessageComponent()) {
+        if (interaction.customId.startsWith('enter_')) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const [_, id] = interaction.customId.split('_', 2);
+          const lottery = getLottery(id);
+          if (!lottery) {
+            await interaction.reply({
+              content: 'The selected lottery is no longer available.',
+              ephemeral: true,
+            });
+            return;
+          }
+          await handleEnterLottery(interaction, lottery);
+        }
+      } else if (interaction.isChatInputCommand()) {
+        if (interaction.commandName === CREATE_LOTTERY.name) {
+          await handleCreateLottery(interaction);
+        } else if (interaction.commandName === ENTER_LOTTERY.name) {
+          const pickResult = await pickLotteryToEnter(interaction);
+          if (!pickResult) {
+            return;
+          }
+          if (!pickResult.lottery) {
+            await pickResult.interaction.reply({
+              content: 'The selected lottery is no longer available.',
+              ephemeral: true,
+            });
+            return;
+          }
+          await handleEnterLottery(pickResult.interaction, pickResult.lottery);
+        }
       }
     } catch (e) {
       // Modal submission probably expired
