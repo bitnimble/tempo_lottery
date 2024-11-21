@@ -1,6 +1,6 @@
-import { Preconditions } from '@/app/base/preconditions';
 import { getDb } from '@/db/db';
 import { Lottery } from '@/db/schema';
+import { getDiscordUser } from '@/discord/discord_client_actions';
 import { getDrawDate } from '@/lottery/lottery';
 import { Client } from 'discord.js';
 
@@ -33,9 +33,8 @@ export default async function Page() {
 }
 
 async function LotteryListItem(props: { lottery: Lottery }) {
-  const client = Preconditions.checkExists((globalThis as any).discordBot) as Client;
   const l = props.lottery;
-  const creator = await client.users.fetch(l.creator);
+  const creator = await getDiscordUser(l.creator);
   return (
     <li key={l.id} className="p-0 list-none">
       {/* TODO: use a Next link for prefetching on hover, but need to also add a loading spinner somewhere then */}
@@ -43,7 +42,7 @@ async function LotteryListItem(props: { lottery: Lottery }) {
         <div className="rounded-md border border-input hover:border-black px-4 py-2 transition">
           <h4 className="m-0">{l.title}</h4>
           <p className="m-0 font-normal text-sm">
-            Created by: {creator.displayName}
+            Created by: {creator?.name || 'N/A'}
             <br />
             Prize: {l.prize || 'None'}
             <br />

@@ -6,11 +6,13 @@ import { JollyNumberField } from '@/components/ui/numberfield';
 import { JollyTextField } from '@/components/ui/textfield';
 import { saveLottery, tryPromoteLottery } from '@/db/db_actions';
 import { Lottery, LotterySchema, LotteryType } from '@/db/schema';
+import { getDiscordUser } from '@/discord/discord_client_actions';
 import { getLocalTimeZone, parseAbsolute, ZonedDateTime } from '@internationalized/date';
 import { Loader2 } from 'lucide-react';
 import { action, observable, runInAction, toJS } from 'mobx';
 import * as mobxReact from 'mobx-react';
 import dynamic from 'next/dynamic';
+import React from 'react';
 import { Form, PressEvent } from 'react-aria-components';
 
 const DateRangePicker = dynamic(
@@ -20,6 +22,7 @@ const DateRangePicker = dynamic(
 
 type Store = {
   lottery: Lottery;
+  creator?: { name: string; iconURL: string | undefined };
   isSaving: boolean;
   isPublishing: boolean;
   error: string | undefined;
@@ -33,6 +36,7 @@ const lotteryTypeLabels: Record<LotteryType, string> = {
 export const LotteryView = (props: { isDraft: boolean; lottery: Lottery }) => {
   const store = observable<Store>({
     lottery: props.lottery,
+    creator: undefined,
     isSaving: false,
     isPublishing: false,
     error: undefined,
@@ -59,6 +63,14 @@ export const LotteryView = (props: { isDraft: boolean; lottery: Lottery }) => {
     window.location.reload();
   };
 
+  React.useEffect(() => {
+    getDiscordUser(props.lottery.creator).then((u) => {
+      if (u) {
+        runInAction(() => (store.creator = u));
+      }
+    });
+  }, [props.lottery]);
+
   return (
     <_LotteryView isDraft={props.isDraft} store={store} onSave={onSave} onPublish={onPublish} />
   );
@@ -81,8 +93,7 @@ const _LotteryView = mobxReact.observer(
           <JollyTextField
             className="flex-1"
             label="Creator"
-            value={l.creator}
-            onChange={action((v) => (l.creator = v))}
+            value={props.store.creator?.name || 'Loading...'}
             isReadOnly
           />
         </div>

@@ -1,6 +1,7 @@
 import { getLotteries, getLottery } from '@/db/db';
 import { saveLottery } from '@/db/db_actions';
 import { Bid, Lottery, LotteryType } from '@/db/schema';
+import { getDiscordUser } from '@/discord/discord_client_actions';
 import { now, parseAbsolute, ZonedDateTime } from '@internationalized/date';
 import { randomUUID } from 'crypto';
 import { ChannelType, Client, EmbedBuilder } from 'discord.js';
@@ -133,14 +134,11 @@ async function sendLotteryOpenEmbed(id: string) {
   if (!channel || channel.type !== ChannelType.GuildText) {
     return;
   }
-  const user = await client.users.fetch(lottery.creator);
+  const discordUser = await getDiscordUser(lottery.creator);
   const embed = new EmbedBuilder()
     .setTitle(lottery.title)
     .setDescription(lottery.description || null)
-    .setAuthor({
-      name: user.displayName,
-      iconURL: user.avatarURL() || undefined,
-    })
+    .setAuthor(discordUser || null)
     .addFields(
       { name: 'Prize', value: lottery.prize || '(none)', inline: true },
       { name: 'Closes', value: `<t:${Math.floor(+resultsDate.toDate() / 1000)}:R>`, inline: true }
