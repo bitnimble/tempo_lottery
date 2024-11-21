@@ -7,26 +7,25 @@ import { randomUUID } from 'crypto';
 import { ChannelType, Client, EmbedBuilder } from 'discord.js';
 import schedule from 'node-schedule';
 
-export const enum BidResult {
-  SUCCESS,
-  ALREADY_BID,
-}
+// Makes N bids, and returns the number of bids that were successfully entered.
+export function makeBids(lottery: Lottery, user: string, bids: number[]): number {
+  const pastBids = lottery.bids.filter((b) => b.user === user);
+  const remainingBidCount = lottery.maxBidsPerUser - pastBids.length;
 
-export function makeBid(lottery: Lottery, user: string, bid: number): BidResult {
-  if (lottery.bids.filter((b) => b.user === user).length >= lottery.maxBidsPerUser) {
-    return BidResult.ALREADY_BID;
+  const validBids = bids.slice(0, remainingBidCount);
+
+  for (const bid of validBids) {
+    lottery.bids.push({
+      id: randomUUID(),
+      placedAt: now('UTC').toAbsoluteString(),
+      user,
+      bid,
+    });
   }
-
-  lottery.bids.push({
-    id: randomUUID(),
-    placedAt: now('UTC').toAbsoluteString(),
-    user,
-    bid,
-  });
 
   saveLottery(lottery, true);
 
-  return BidResult.SUCCESS;
+  return validBids.length;
 }
 
 async function processLotteryResults(id: string) {

@@ -2,7 +2,7 @@ import { Preconditions } from '@/app/base/preconditions';
 import { createDraftLottery, getLotteries, getLottery } from '@/db/db';
 import { Lottery } from '@/db/schema';
 import { CREATE_LOTTERY, ENTER_LOTTERY } from '@/discord/commands';
-import { BidResult, getDrawDate, makeBid } from '@/lottery/lottery';
+import { getDrawDate, makeBids } from '@/lottery/lottery';
 import { now } from '@internationalized/date';
 import {
   ActionRowBuilder,
@@ -131,20 +131,22 @@ async function handleEnterLottery(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    const bidResult = await collectBidForLottery(interaction, confirmation, lottery);
-    if (bidResult == null) {
+    const bidsResult = await collectBidsForLottery(interaction, confirmation, lottery);
+    if (bidsResult == null) {
       return;
     }
-    const [modalConfirmation, bid] = bidResult;
-    const result = makeBid(lottery, interaction.user.id, bid);
-    if (result == BidResult.ALREADY_BID) {
+    const [modalConfirmation, bids] = bidsResult;
+    const successfulBids = makeBids(lottery, interaction.user.id, bids);
+    if (successfulBids < bids.length) {
       await modalConfirmation.reply({
-        content: `You have already bid the maximum number of times on this lottery (${lottery.maxBidsPerUser}).`,
+        content: `You hit the maximum number of bids (${
+          lottery.maxBidsPerUser
+        }). Your first ${successfulBids} bid(s) were successfully entered: \`${bids.join(', ')}\`.`,
         ephemeral: true,
       });
     } else {
       await modalConfirmation.reply({
-        content: `You have bid \`${bid}\` on "${lottery.title}"!`,
+        content: `You have bid \`${bids.join(', ')}\` on "${lottery.title}"!`,
         ephemeral: true,
       });
     }
@@ -160,36 +162,42 @@ async function handleEnterLottery(interaction: ChatInputCommandInteraction) {
 
 // Pull this out into its own function, so that if Discord allows us to do chained modals in the
 // future, we can easily chain more (e.g. retry on validation failure)
-async function collectBidForLottery(
+async function collectBidsForLottery(
   originalInteraction: ChatInputCommandInteraction,
   interaction: MessageComponentInteraction,
   lottery: Lottery
 ) {
   await interaction.showModal({
     customId: 'lottery_bid_modal',
-    title: 'Enter your lottery bid',
-    components: [
-      new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+    title: `Enter your lottery bids (between ${lottery.minimumBid} - ${lottery.maximumBid})`,
+    components: new Array(Math.min(5, lottery.maxBidsPerUser)).fill(0).map((_, i) => {
+      return new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
         new TextInputBuilder()
-          .setCustomId('lottery_bid')
-          .setLabel(`Bid (${lottery.minimumBid} - ${lottery.maximumBid})`)
+          .setCustomId(`lottery_bid_${i + 1}`)
+          .setLabel(`Bid ${i + 1}`)
           .setStyle(TextInputStyle.Short)
-      ),
-    ],
+          .setRequired(i === 0 ? true : false)
+      );
+    }),
   });
   const modalConfirmation = await interaction.awaitModalSubmit({
     filter: (i) => i.user.id === interaction.user.id,
     time: 60_000,
   });
-  const bid = Number(modalConfirmation.components[0].components[0].value);
-  if (isNaN(bid) || bid < lottery.minimumBid || bid > lottery.maximumBid) {
-    await originalInteraction.editReply(
-      'Invalid bid entered - please make sure it is a valid number in the possible bid range.'
-    );
-    return;
+  const bids = modalConfirmation.components
+    .map((c) => c.components[0].value)
+    .filter((v) => v.trim() !== '')
+    .map(Number);
+  for (const bid of bids) {
+    if (isNaN(bid) || bid < lottery.minimumBid || bid > lottery.maximumBid) {
+      await originalInteraction.editReply(
+        `Invalid bid entered ("${bid}") - please make sure it is a valid number in the possible bid range.`
+      );
+      return;
+    }
   }
 
-  return [modalConfirmation, bid] as const;
+  return [modalConfirmation, bids] as const;
 }
 
 export function createDiscordBot() {
