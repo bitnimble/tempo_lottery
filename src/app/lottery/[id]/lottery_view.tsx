@@ -12,7 +12,8 @@ import {
   tryUnpublishLottery,
 } from '@/db/db_actions';
 import { Lottery, LotterySchema, LotteryType, lotteryTypeLabels } from '@/db/schema';
-import { getDiscordUser, sendLotteryAnnouncement } from '@/discord/discord_client_actions';
+import { getDiscordUser, upsertLotteryAnnouncement } from '@/discord/discord_client_actions';
+import { updateLotterySchedule } from '@/lottery/lottery';
 import { getLocalTimeZone, parseAbsolute, ZonedDateTime } from '@internationalized/date';
 import { Loader2 } from 'lucide-react';
 import { action, observable, runInAction, toJS } from 'mobx';
@@ -29,6 +30,10 @@ const enum LoadingState {
   DELETING,
 }
 
+// Because the value / content of the datetime picker is client dependent (as the displayed value is
+// based on the local time zone), SSR leads to a content mismatch. We force this component to be
+// dynamic instead, and just display a readonly text field (which has the same dimensions and
+// appearance as a blank datetime picker) for the initial SSR prerendering.
 const DateRangePicker = dynamic(
   () => import('@/components/ui/date-picker').then((c) => c.JollyDateRangePicker<ZonedDateTime>),
   {
@@ -58,8 +63,9 @@ export const LotteryView = (props: { isDraft: boolean; lottery: Lottery }) => {
     runInAction(() => (store.state = LoadingState.SAVING));
     const announced = store.lottery.announcementId != null;
     await saveLottery(toJS(store.lottery));
+    await updateLotterySchedule(store.lottery);
     if (announced) {
-      await sendLotteryAnnouncement(store.lottery.id, true);
+      await upsertLotteryAnnouncement(store.lottery.id);
     }
     runInAction(() => (store.state = LoadingState.IDLE));
   };
@@ -67,7 +73,7 @@ export const LotteryView = (props: { isDraft: boolean; lottery: Lottery }) => {
   const onPublish = async () => {
     runInAction(() => (store.state = LoadingState.PUBLISHING));
     try {
-      await saveLottery(toJS(store.lottery), true);
+      await saveLottery(toJS(store.lottery));
       await tryPublishLottery(store.lottery.id);
     } catch (e) {
       runInAction(() => {
@@ -82,7 +88,7 @@ export const LotteryView = (props: { isDraft: boolean; lottery: Lottery }) => {
   const onUnpublish = async () => {
     runInAction(() => (store.state = LoadingState.UNPUBLISHING));
     try {
-      await saveLottery(toJS(store.lottery), true);
+      await saveLottery(toJS(store.lottery));
       await tryUnpublishLottery(store.lottery.id);
     } catch (e) {
       runInAction(() => {

@@ -4,7 +4,7 @@ import { getDb, saveDb } from '@/db/db';
 import { Bid, Lottery, LotterySchema } from '@/db/schema';
 import { updateLotterySchedule } from '@/lottery/lottery';
 
-export async function saveLottery(lottery: Lottery, skipScheduleUpdate?: boolean) {
+export async function saveLottery(lottery: Lottery) {
   const db = getDb();
 
   const existing = db.lotteries.findIndex((l) => l.id === lottery.id);
@@ -21,10 +21,6 @@ export async function saveLottery(lottery: Lottery, skipScheduleUpdate?: boolean
       })
     );
     saveDb();
-
-    if (skipScheduleUpdate !== true) {
-      await updateLotterySchedule(lottery);
-    }
     return;
   }
 

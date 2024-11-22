@@ -1,7 +1,7 @@
 import { getLotteries, getLottery } from '@/db/db';
 import { saveLotteryBids } from '@/db/db_actions';
 import { Bid, Lottery, LotteryType } from '@/db/schema';
-import { sendLotteryAnnouncement } from '@/discord/discord_client_actions';
+import { upsertLotteryAnnouncement } from '@/discord/discord_client_actions';
 import { now, parseAbsolute, ZonedDateTime } from '@internationalized/date';
 import { randomUUID } from 'crypto';
 import { ChannelType, Client } from 'discord.js';
@@ -120,12 +120,11 @@ async function processLotteryResults(id: string) {
           winners.length
         } winners:\n${winners.map((w) => `<@${w.user}>`).join('\n')}`;
   await channel.send({ allowedMentions: { users: winners.map((w) => w.user) }, content });
-  await sendLotteryAnnouncement(lottery.id, true);
+  await upsertLotteryAnnouncement(lottery.id);
 }
 
 function createLotteryDrawJob(lottery: Lottery, drawDate: ZonedDateTime) {
-  console.log('Updating lottery schedule for ' + lottery.id);
-  console.log('Creating new job for ' + lottery.id);
+  console.log('Creating new draw job for ' + lottery.id);
   schedule.scheduleJob(lottery.id, drawDate.toDate(), () => processLotteryResults(lottery.id));
 }
 
@@ -133,11 +132,11 @@ async function createLotteryAnnounceJob(lottery: Lottery, drawDate: ZonedDateTim
   const startDate = drawDate.add({ milliseconds: -1 * lottery.duration });
   if (getMsDiff(now('UTC'), startDate) < 0) {
     schedule.scheduleJob(lottery.id + '_announce', startDate.toDate(), () =>
-      sendLotteryAnnouncement(lottery.id)
+      upsertLotteryAnnouncement(lottery.id)
     );
   } else {
     // Start date was in the past, so just send the message instantly
-    await sendLotteryAnnouncement(lottery.id);
+    await upsertLotteryAnnouncement(lottery.id);
   }
 }
 
@@ -150,7 +149,7 @@ export async function updateLotterySchedule(lottery: Lottery) {
     drawJob.cancel();
   }
   if (lotteryAnnounceJob) {
-    console.log('Deleting old lottery open job for lottery ' + lottery.id);
+    console.log('Deleting old announce job for lottery ' + lottery.id);
     lotteryAnnounceJob.cancel();
   }
 
@@ -162,9 +161,6 @@ export async function updateLotterySchedule(lottery: Lottery) {
   // Create new scheduled jobs
   const drawDate = getNextDrawDate(lottery);
   if (!drawDate) {
-    console.log(
-      `Attempted to update schedule for lottery "${lottery.title}" (${lottery.id}), but it was a once-off lottery and has expired.`
-    );
     return;
   }
   createLotteryDrawJob(lottery, drawDate);

@@ -28,7 +28,7 @@ export async function getDiscordUser(id: string) {
 }
 
 // Take ID instead of Lottery so that we don't capture the lottery metadata at the time of scheduling
-export async function sendLotteryAnnouncement(id: string, editExistingMessage?: boolean) {
+export async function upsertLotteryAnnouncement(id: string, forceNewMessage?: boolean) {
   const lottery = getLottery(id);
   if (!lottery) {
     throw new Error('Tried to send lottery open message but it did not exist in the DB: ' + id);
@@ -77,10 +77,10 @@ export async function sendLotteryAnnouncement(id: string, editExistingMessage?: 
       : [],
   };
 
-  if (editExistingMessage && lottery.announcementId) {
+  if (lottery.announcementId && !forceNewMessage) {
     await channel.messages.edit(lottery.announcementId, messagePayload);
   } else {
     const message = await channel.send(messagePayload);
-    await saveLottery({ ...lottery, announcementId: message.id }, true);
+    await saveLottery({ ...lottery, announcementId: message.id });
   }
 }
