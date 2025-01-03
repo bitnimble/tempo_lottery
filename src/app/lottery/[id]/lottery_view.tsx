@@ -59,60 +59,47 @@ export const LotteryView = (props: { isDraft: boolean; lottery: Lottery }) => {
     error: undefined,
   });
 
-  const onSave = async () => {
-    runInAction(() => (store.state = LoadingState.SAVING));
+  const makeLoadingCall = (state: LoadingState, call: () => Promise<void>) => {
+    return async () => {
+      runInAction(() => (store.state = state));
+      try {
+        await call();
+      } catch (e) {
+        store.error = e;
+      } finally {
+        runInAction(() => (store.state = LoadingState.IDLE));
+      }
+    };
+  };
+
+  const onSave = makeLoadingCall(LoadingState.SAVING, async () => {
     const announced = store.lottery.announcementId != null;
     await saveLottery(toJS(store.lottery));
     await updateLotterySchedule(store.lottery);
     if (announced) {
       await upsertLotteryAnnouncement(store.lottery.id);
     }
-    runInAction(() => (store.state = LoadingState.IDLE));
-  };
+  });
 
-  const onPublish = async () => {
-    runInAction(() => (store.state = LoadingState.PUBLISHING));
-    try {
-      await saveLottery(toJS(store.lottery));
-      await tryPublishLottery(store.lottery.id);
-    } catch (e) {
-      runInAction(() => {
-        store.state = LoadingState.IDLE;
-        store.error = e;
-      });
-    }
+  const onPublish = makeLoadingCall(LoadingState.PUBLISHING, async () => {
+    await saveLottery(toJS(store.lottery));
+    await tryPublishLottery(store.lottery.id);
     // Redirect to new promoted lottery page
     window.location.reload();
-  };
+  });
 
-  const onUnpublish = async () => {
-    runInAction(() => (store.state = LoadingState.UNPUBLISHING));
-    try {
-      await saveLottery(toJS(store.lottery));
-      await tryUnpublishLottery(store.lottery.id);
-    } catch (e) {
-      runInAction(() => {
-        store.state = LoadingState.IDLE;
-        store.error = e;
-      });
-    }
+  const onUnpublish = makeLoadingCall(LoadingState.UNPUBLISHING, async () => {
+    await saveLottery(toJS(store.lottery));
+    await tryUnpublishLottery(store.lottery.id);
     // Redirect to new draft lottery page
     window.location.reload();
-  };
+  });
 
-  const onDelete = async () => {
-    runInAction(() => (store.state = LoadingState.DELETING));
-    try {
-      await tryDeleteLottery(store.lottery.id);
-    } catch (e) {
-      runInAction(() => {
-        store.state = LoadingState.IDLE;
-        store.error = e;
-      });
-    }
+  const onDelete = makeLoadingCall(LoadingState.DELETING, async () => {
+    await tryDeleteLottery(store.lottery.id);
     // Redirect to new draft lottery page
     window.location.href = '/lottery';
-  };
+  });
 
   React.useEffect(() => {
     getDiscordUser(props.lottery.creator).then((u) => {
