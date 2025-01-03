@@ -21,6 +21,7 @@ import * as mobxReact from 'mobx-react';
 import dynamic from 'next/dynamic';
 import React from 'react';
 import { Form, PressEvent } from 'react-aria-components';
+import timespan from 'timespan-parser';
 
 const enum LoadingState {
   IDLE,
@@ -49,6 +50,11 @@ type Store = {
   creator?: { name: string; iconURL: string | undefined };
   state: LoadingState;
   error: unknown | undefined;
+  repeatInterval: string;
+  parsedRepeatInterval: number;
+  validationErrors: {
+    repeatInterval?: string;
+  };
 };
 
 export const LotteryView = (props: { isDraft: boolean; lottery: Lottery }) => {
@@ -57,6 +63,14 @@ export const LotteryView = (props: { isDraft: boolean; lottery: Lottery }) => {
     creator: undefined,
     state: LoadingState.IDLE,
     error: undefined,
+    repeatInterval:
+      props.lottery.repeatInterval > 0
+        ? timespan.getString(props.lottery.repeatInterval, { unit: 'ms', valueSep: ', ' })
+        : 'never',
+    parsedRepeatInterval: props.lottery.repeatInterval,
+    validationErrors: {
+      repeatInterval: undefined,
+    },
   });
 
   const makeLoadingCall = (state: LoadingState, call: () => Promise<void>) => {
@@ -64,6 +78,11 @@ export const LotteryView = (props: { isDraft: boolean; lottery: Lottery }) => {
       runInAction(() => (store.state = state));
       try {
         await call();
+        if (state === LoadingState.DELETING) {
+          window.location.href = '/lottery';
+        } else {
+          window.location.reload();
+        }
       } catch (e) {
         store.error = e;
       } finally {
@@ -72,33 +91,36 @@ export const LotteryView = (props: { isDraft: boolean; lottery: Lottery }) => {
     };
   };
 
+  const validateFields = () => {
+    if (!!store.validationErrors.repeatInterval) {
+      throw new Error('Cannot save with errors');
+    }
+  };
+
   const onSave = makeLoadingCall(LoadingState.SAVING, async () => {
+    validateFields();
     const announced = store.lottery.announcementId != null;
     await saveLottery(toJS(store.lottery));
     await updateLotterySchedule(store.lottery.id);
-    if (announced) {
+    if (announced && !props.isDraft) {
       await upsertLotteryAnnouncement(store.lottery.id);
     }
   });
 
   const onPublish = makeLoadingCall(LoadingState.PUBLISHING, async () => {
+    validateFields();
     await saveLottery(toJS(store.lottery));
     await tryPublishLottery(store.lottery.id);
-    // Redirect to new promoted lottery page
-    window.location.reload();
   });
 
   const onUnpublish = makeLoadingCall(LoadingState.UNPUBLISHING, async () => {
+    validateFields();
     await saveLottery(toJS(store.lottery));
     await tryUnpublishLottery(store.lottery.id);
-    // Redirect to new draft lottery page
-    window.location.reload();
   });
 
   const onDelete = makeLoadingCall(LoadingState.DELETING, async () => {
     await tryDeleteLottery(store.lottery.id);
-    // Redirect to new draft lottery page
-    window.location.href = '/lottery';
   });
 
   React.useEffect(() => {
@@ -130,8 +152,9 @@ const _LotteryView = mobxReact.observer(
     onUnpublish: (e: PressEvent) => Promise<void>;
     onDelete: (e: PressEvent) => Promise<void>;
   }) => {
-    const l = props.store.lottery;
-    const isSubmitting = props.store.state !== LoadingState.IDLE;
+    const { store } = props;
+    const l = store.lottery;
+    const isSubmitting = store.state !== LoadingState.IDLE;
 
     return (
       <Form className="flex flex-col gap-4">
@@ -141,7 +164,7 @@ const _LotteryView = mobxReact.observer(
           <JollyTextField
             className="flex-1"
             label="Creator"
-            value={props.store.creator?.name || 'Loading...'}
+            value={store.creator?.name || 'Loading...'}
             isReadOnly
           />
         </div>
@@ -186,10 +209,36 @@ const _LotteryView = mobxReact.observer(
             l.duration = +v.end.toDate() - +v.start.toDate();
           })}
         />
-        <JollyNumberField
+        <JollyTextField
           label="Repeat interval"
-          value={l.repeatInterval}
-          onChange={action((v) => (l.repeatInterval = v))}
+          value={store.repeatInterval}
+          isInvalid={!!store.validationErrors.repeatInterval}
+          errorMessage={store.validationErrors.repeatInterval}
+          onChange={action((v) => {
+            store.repeatInterval = v;
+            if (v == null || v.trim() == '') {
+              store.parsedRepeatInterval = 0;
+              return;
+            }
+            try {
+              let input = v.trim().replaceAll(',', '');
+              // Default a unit-less number to "days"
+              if (!isNaN(Number(input))) {
+                input += 'd';
+              }
+              const duration = timespan.parse(input, 'ms');
+              store.parsedRepeatInterval = duration;
+              store.validationErrors.repeatInterval = undefined;
+            } catch (e) {
+              // Could not parse - mark as error field
+              store.validationErrors.repeatInterval = 'Could not parse repeat interval';
+            }
+          })}
+          onBlur={() => {
+            if (store.validationErrors.repeatInterval == null) {
+              l.repeatInterval = store.parsedRepeatInterval;
+            }
+          }}
         />
         <h3>Restrictions</h3>
         <div className="flex gap-4 w-full">
@@ -234,7 +283,6 @@ const _LotteryView = mobxReact.observer(
             {props.store.error as any}
           </div>
         )}
-
         <div className="flex gap-2">
           <JollyButton isDisabled={isSubmitting} onPress={props.onSave}>
             💾 Save

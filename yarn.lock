@@ -1565,6 +1565,11 @@
   resolved "https://registry.yarnpkg.com/@types/semver/-/semver-7.5.8.tgz#8268a8c57a3e4abd25c165ecd36237db7948a55e"
   integrity sha512-I8EUhyrgfLrcTkzV3TSsGyl1tSuPrEDzr0yd5m90UgNxQkyDXULk3b6MlQqTCpZpNtWe1K0hzclnZkTcLBe2UQ==
 
+"@types/timespan-parser@^1.2.3":
+  version "1.2.3"
+  resolved "https://registry.yarnpkg.com/@types/timespan-parser/-/timespan-parser-1.2.3.tgz#84505ca601652d9ab215043054a71da30b7f608f"
+  integrity sha512-8YRzEiBbjnmC9DGOT7qV+fAYzx3XTV7rcYMzvHw7wYQ7IZq2jiKswMr+w4PoWWXd+oIXGSOcxbco2/AeNGrULA==
+
 "@types/ws@^8.5.10":
   version "8.5.12"
   resolved "https://registry.yarnpkg.com/@types/ws/-/ws-8.5.12.tgz#619475fe98f35ccca2a2f6c137702d85ec247b7e"
@@ -4502,6 +4507,11 @@ thenify-all@^1.0.0:
   integrity sha512-RVZSIV5IG10Hk3enotrhvz0T9em6cyHBLkH/YAZuKqd8hRkKhSfCGIcP2KUY0EPxndzANBmNllzWPwak+bheSw==
   dependencies:
     any-promise "^1.0.0"
+
+timespan-parser@^1.2.0:
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/timespan-parser/-/timespan-parser-1.2.0.tgz#db3c95908c772f83c71099c909af0e47f413019c"
+  integrity sha512-IJ7UE1VONoh60AaYUyXJu9yP+grOYFOek4RE7IOjHdmjnVSoxDEDGP7ZuLIMfy1aCJyVwU7vHASKSXdTC/hy3g==
 
 to-regex-range@^5.0.1:
   version "5.0.1"

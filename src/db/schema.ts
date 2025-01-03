@@ -53,7 +53,7 @@ export const LotterySchema = z.object({
   repeatInterval: z
     .number({
       description:
-        'How often this lottery repeats, in milliseconds. Repeat interval must be greater than the lottery duration.',
+        'How often this lottery repeats, in milliseconds. Repeat interval must be greater than the lottery duration. A repeat duration of 0 means that the lottery will not repeat.',
     })
     .default(0),
   winnerCount: z.number({ description: 'Maximum number of winners' }).min(1).default(1),
