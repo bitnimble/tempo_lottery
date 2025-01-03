@@ -162,7 +162,7 @@ async function handleEnterLottery(
     if (successfulBids < bids.length) {
       await modalConfirmation.reply({
         content: `You hit the maximum number of bids (${lottery.maxBidsPerUser
-          }). Your first ${successfulBids} bid(s) were successfully entered: \`${bids.join(', ')}\`.`,
+          }). Your first ${successfulBids} bid(s) were successfully entered: \`${bids.slice(0, successfulBids).join(', ')}\`.`,
         ephemeral: true,
       });
     } else {
