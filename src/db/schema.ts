@@ -63,6 +63,7 @@ export const LotterySchema = z.object({
     .number({ description: 'Maximum number of bids a single user can make' })
     .default(1),
   bids: z.array(BidSchema).default([]),
+  nextBid: z.number({ description: 'The raffle number to assign to the next entrant. Only applicable to LotteryType.SIMPLE.' }).default(1),
   announcementId: z
     .string({
       description:

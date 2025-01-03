@@ -1,6 +1,6 @@
 import { Preconditions } from '@/app/base/preconditions';
-import { createDraftLottery, getLotteries, getLottery } from '@/db/db';
-import { Lottery } from '@/db/schema';
+import { createDraftLottery, getLotteries, getLottery, saveDb } from '@/db/db';
+import { Lottery, LotteryType } from '@/db/schema';
 import { CREATE_LOTTERY, ENTER_LOTTERY } from '@/discord/commands';
 import { getNextDrawDate, makeBids } from '@/lottery/lottery';
 import { now } from '@internationalized/date';
@@ -151,22 +151,40 @@ async function handleEnterLottery(
     return;
   }
 
-  const bidsResult = await collectBidsForLottery(interaction, lottery);
-  if (bidsResult == null) {
-    return;
-  }
-  const [modalConfirmation, bids] = bidsResult;
-  const successfulBids = await makeBids(lottery, interaction.user.id, bids);
-  if (successfulBids < bids.length) {
-    await modalConfirmation.reply({
-      content: `You hit the maximum number of bids (${
-        lottery.maxBidsPerUser
-      }). Your first ${successfulBids} bid(s) were successfully entered: \`${bids.join(', ')}\`.`,
-      ephemeral: true,
-    });
+  if (lottery.lotteryType === LotteryType.LOWEST_UNIQUE_NUMBER) {
+    // For the lowest unique number lottery, allow users to submit their own bids.
+    const bidsResult = await collectBidsForLottery(interaction, lottery);
+    if (bidsResult == null) {
+      return;
+    }
+    const [modalConfirmation, bids] = bidsResult;
+    const successfulBids = await makeBids(lottery, interaction.user.id, bids);
+    if (successfulBids < bids.length) {
+      await modalConfirmation.reply({
+        content: `You hit the maximum number of bids (${lottery.maxBidsPerUser
+          }). Your first ${successfulBids} bid(s) were successfully entered: \`${bids.join(', ')}\`.`,
+        ephemeral: true,
+      });
+    } else {
+      await modalConfirmation.reply({
+        content: `You have bid \`${bids.join(', ')}\` on "${lottery.title}"!`,
+        ephemeral: true,
+      });
+    }
   } else {
-    await modalConfirmation.reply({
-      content: `You have bid \`${bids.join(', ')}\` on "${lottery.title}"!`,
+    // Otherwise, simply assign them an incrementing raffle number and tell them what it is.
+    const nextBid = lottery.nextBid++;
+    saveDb();
+    const successfulBids = await makeBids(lottery, interaction.user.id, [nextBid]);
+    if (successfulBids !== 1) {
+      console.error(`Could not successfully enter bid ${nextBid} into lottery ${lottery.id}`);
+      return await interaction.reply({
+        content: `Could not successfully enter bid. Please try again later.`,
+        ephemeral: true,
+      });
+    }
+    return await interaction.reply({
+      content: `You have entered the lottery and have been assigned ticket #${nextBid}!`,
       ephemeral: true,
     });
   }

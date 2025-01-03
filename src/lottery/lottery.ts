@@ -51,74 +51,63 @@ async function processLotteryResults(id: string) {
     return;
   }
 
-  // Group bids by their bidding number
-  const bidMapping = new Map<number, Bid[]>();
-  for (const b of lottery.bids) {
-    const existing = bidMapping.get(b.bid);
-    if (!existing) {
-      bidMapping.set(b.bid, [b]);
-    } else {
-      existing.push(b);
-    }
-  }
-  const bidPool = [...bidMapping.keys()];
 
   let winners: Bid[] = [];
   let winningNumber: number | undefined;
 
   if (lottery.lotteryType === LotteryType.SIMPLE) {
-    winningNumber = bidPool[Math.floor(Math.random() * bidPool.length)];
-    const potentialWinners = bidMapping.get(winningNumber);
-    if (potentialWinners == null || potentialWinners.length === 0) {
-      throw new Error('Selected bid group unexpectedly had no bids');
-    }
-
-    winners = potentialWinners
-      .sort((a, b) => {
-        if (a.placedAt < b.placedAt) {
-          return -1;
-        }
-        if (a.placedAt > b.placedAt) {
-          return 1;
-        }
-        return 0;
-      })
-      .slice(0, lottery.winnerCount);
+    // A "simple" lottery (i.e. a raffle) simply randomly picks a single winning number. All
+    // bids should be guaranteed to be unique due to the bidding mechanism, so there should only
+    // be one winner.
+    const winner = lottery.bids[Math.floor(Math.random() * lottery.bids.length)];
+    winners = [winner];
+    winningNumber = winner.bid;
   } else {
-    const sortedBidPool = bidPool.sort((a, b) => a - b);
-    for (const bid of sortedBidPool) {
+    // Group bids by their bidding number
+    const bidMapping = new Map<number, Bid[]>();
+    for (const b of lottery.bids) {
+      const existing = bidMapping.get(b.bid);
+      if (!existing) {
+        bidMapping.set(b.bid, [b]);
+      } else {
+        existing.push(b);
+      }
+    }
+    const allBidNumbers = [...bidMapping.keys()];
+    const increasingBidNumbers = allBidNumbers.sort((a, b) => a - b);
+    for (const bid of increasingBidNumbers) {
       const bids = bidMapping.get(bid);
+      // Find lowest bidding number that only had 1 bid
       if (bids && bids.length === 1) {
         winners = bids;
         winningNumber = bids[0].bid;
         break;
       }
     }
+
   }
 
   if (lottery.repeatInterval > 0) {
     updateLotterySchedule(lottery);
   }
 
-  console.log(
-    `Winners of "${lottery.title}" (${lottery.id}): ${winners
-      .map((w) => `${w.user}: ${w.bid}`)
-      .join(', ')}`
-  );
+  if (winners.length === 0) {
+    console.log(`Lottery "${lottery.title} (${lottery.id}) had no winners"`);
+  } else {
+    console.log(
+      `Winners of "${lottery.title}" (${lottery.id}): ${winners
+        .map((w) => `${w.user}: ${w.bid}`)
+        .join(', ')}`
+    );
+  }
 
   const channel = await client.channels.fetch(lottery.channel);
-
   if (!channel || channel.type !== ChannelType.GuildText) {
     return;
   }
-  const content =
-    winners.length === 1
-      ? `Lottery "${lottery.title}" is over! The winning number is \`${winningNumber}\`, and the winner is <@${winners[0].user}>`
-      : `Lottery "${
-          lottery.title
-        }" is over! The winning number is \`${winningNumber}\`, and there were ${
-          winners.length
-        } winners:\n${winners.map((w) => `<@${w.user}>`).join('\n')}`;
+  const content = winners.length === 0
+    ? `Lottery "${lottery.title}" is over! Nobody placed a unique bid, so there were no winners!`
+    : `Lottery "${lottery.title}" is over! The winning number is \`${winningNumber}\`, and the winner is <@${winners[0].user}>`;
   await channel.send({ allowedMentions: { users: winners.map((w) => w.user) }, content });
   await upsertLotteryAnnouncement(lottery.id);
 }
