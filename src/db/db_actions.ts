@@ -1,8 +1,8 @@
 'use server';
 
-import { getDb, saveDb } from '@/db/db';
+import { getDb, getLottery, saveDb } from '@/db/db';
 import { Bid, Lottery, LotterySchema } from '@/db/schema';
-import { updateLotterySchedule } from '@/lottery/lottery';
+import { updateLotterySchedule as _updateLotterySchedule } from '@/lottery/lottery';
 
 export async function saveLottery(lottery: Lottery) {
   const db = getDb();
@@ -61,7 +61,7 @@ export async function tryPublishLottery(draftId: string) {
   db.lotteries.push(lottery);
 
   saveDb();
-  await updateLotterySchedule(lottery);
+  await _updateLotterySchedule(lottery);
 }
 
 export async function tryUnpublishLottery(id: string) {
@@ -76,7 +76,7 @@ export async function tryUnpublishLottery(id: string) {
   db.drafts.push(lottery);
 
   saveDb();
-  await updateLotterySchedule(lottery);
+  await _updateLotterySchedule(lottery);
 }
 
 export async function tryDeleteLottery(id: string) {
@@ -85,7 +85,7 @@ export async function tryDeleteLottery(id: string) {
   if (existing >= 0) {
     const [lottery] = db.lotteries.splice(existing, 1);
     saveDb();
-    await updateLotterySchedule(lottery);
+    await _updateLotterySchedule(lottery);
     return;
   }
 
@@ -94,4 +94,12 @@ export async function tryDeleteLottery(id: string) {
     db.drafts.splice(existingDraft, 1);
     saveDb();
   }
+}
+
+export async function updateLotterySchedule(id: string) {
+  const lottery = getLottery(id);
+  if (!lottery) {
+    return;
+  }
+  _updateLotterySchedule(lottery);
 }

@@ -10,10 +10,10 @@ import {
   tryDeleteLottery,
   tryPublishLottery,
   tryUnpublishLottery,
+  updateLotterySchedule,
 } from '@/db/db_actions';
 import { Lottery, LotterySchema, LotteryType, lotteryTypeLabels } from '@/db/schema';
 import { getDiscordUser, upsertLotteryAnnouncement } from '@/discord/discord_client_actions';
-import { updateLotterySchedule } from '@/lottery/lottery';
 import { getLocalTimeZone, parseAbsolute, ZonedDateTime } from '@internationalized/date';
 import { Loader2 } from 'lucide-react';
 import { action, observable, runInAction, toJS } from 'mobx';
@@ -75,7 +75,7 @@ export const LotteryView = (props: { isDraft: boolean; lottery: Lottery }) => {
   const onSave = makeLoadingCall(LoadingState.SAVING, async () => {
     const announced = store.lottery.announcementId != null;
     await saveLottery(toJS(store.lottery));
-    await updateLotterySchedule(store.lottery);
+    await updateLotterySchedule(store.lottery.id);
     if (announced) {
       await upsertLotteryAnnouncement(store.lottery.id);
     }
@@ -135,6 +135,7 @@ const _LotteryView = mobxReact.observer(
 
     return (
       <Form className="flex flex-col gap-4">
+        <h3>General information</h3>
         <div className="flex gap-4 w-full">
           <JollyTextField className="flex-1 bg-grey" label="ID" value={l.id} isReadOnly />
           <JollyTextField
@@ -160,7 +161,6 @@ const _LotteryView = mobxReact.observer(
             onChange={action((v: LotteryType) => (l.lotteryType = v))}
           />
         </div>
-
         <JollyTextField
           label="Prize"
           value={l.prize || ''}
@@ -171,28 +171,6 @@ const _LotteryView = mobxReact.observer(
           value={l.description || ''}
           onChange={action((v) => (l.description = v))}
           textArea
-        />
-        <div className="mt-8"></div>
-        <div className="flex gap-4 w-full">
-          <JollyTextField
-            className="flex-1"
-            label="Role IDs needed to participate"
-            value={l.roles?.join('\n') || ''}
-            onChange={action((v) => (l.roles = v.split('\n').map((l) => l.trim())))}
-            textArea
-          />
-          <JollyNumberField
-            className="flex-1"
-            label="Max winners"
-            value={l.winnerCount}
-            onChange={action((v) => (l.winnerCount = v))}
-          />
-        </div>
-
-        <JollyNumberField
-          label="Max bids per user"
-          value={l.maxBidsPerUser}
-          onChange={action((v) => (l.maxBidsPerUser = v))}
         />
         <DateRangePicker
           label="Start and end date"
@@ -213,21 +191,43 @@ const _LotteryView = mobxReact.observer(
           value={l.repeatInterval}
           onChange={action((v) => (l.repeatInterval = v))}
         />
+        <h3>Restrictions</h3>
         <div className="flex gap-4 w-full">
-          <JollyNumberField
+          <JollyTextField
             className="flex-1"
-            label="Minimum bid"
-            value={l.minimumBid}
-            onChange={action((v) => (l.minimumBid = v))}
+            label="Role IDs needed to participate"
+            value={l.roles?.join('\n') || ''}
+            onChange={action((v) => (l.roles = v.split('\n').map((l) => l.trim())))}
+            textArea
           />
           <JollyNumberField
+            label="Max bids per user"
             className="flex-1"
-            label="Maximum bid"
-            value={l.maximumBid}
-            onChange={action((v) => (l.maximumBid = v))}
+            value={l.maxBidsPerUser}
+            onChange={action((v) => (l.maxBidsPerUser = v))}
           />
         </div>
-
+        {l.lotteryType === LotteryType.LOWEST_UNIQUE_NUMBER && (
+          <div className="flex gap-4 w-full">
+            <JollyNumberField
+              label="Max winners"
+              value={l.winnerCount}
+              onChange={action((v) => (l.winnerCount = v))}
+            />
+            <JollyNumberField
+              className="flex-1"
+              label="Minimum bid"
+              value={l.minimumBid}
+              onChange={action((v) => (l.minimumBid = v))}
+            />
+            <JollyNumberField
+              className="flex-1"
+              label="Maximum bid"
+              value={l.maximumBid}
+              onChange={action((v) => (l.maximumBid = v))}
+            />
+          </div>
+        )}
         {props.store.error != null && (
           <div className="w-full bg-red-600 rounded-md text-white my-4 p-4">
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -245,14 +245,14 @@ const _LotteryView = mobxReact.observer(
 
           {props.isDraft ? (
             <JollyButton isDisabled={isSubmitting} variant="secondary" onPress={props.onPublish}>
-              ✅ Publish
+              ✅ Save & Publish
               {props.store.state === LoadingState.PUBLISHING && (
                 <Loader2 className="ml-2 size-4 animate-spin" />
               )}
             </JollyButton>
           ) : (
             <JollyButton isDisabled={isSubmitting} variant="secondary" onPress={props.onUnpublish}>
-              🚫 Unpublish
+              🚫 Save & Unpublish
               {props.store.state === LoadingState.UNPUBLISHING && (
                 <Loader2 className="ml-2 size-4 animate-spin" />
               )}

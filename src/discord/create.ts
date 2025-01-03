@@ -184,7 +184,7 @@ async function handleEnterLottery(
       });
     }
     return await interaction.reply({
-      content: `You have entered the lottery and have been assigned ticket #${nextBid}!`,
+      content: `You have entered the lottery and have been assigned ticket #${nextBid}! The winning ticket will be randomly selected when the lottery ends.`,
       ephemeral: true,
     });
   }
